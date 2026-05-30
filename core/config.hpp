@@ -24,12 +24,17 @@ namespace Raptor::Core::Config {
     constexpr std::uint16_t BACKEND_PORT = 8000;
     /// IP the backend server binds to.
     constexpr const char*   BACKEND_IP   = "0.0.0.0";
-    constexpr bool  BACKEND_LOG_LEVEL = true;
+    constexpr bool  BACKEND_LOG = true;
     constexpr int  BACKEND_THREADS = 0;
 
     inline constexpr const char* JWT_SECRET = "ubwJkgS2jsS8N96Qr868f6VCpI0F0nedWeoVp6RF82k=";
 
     inline constexpr const char* JWT_ISSUER  = "raptor";
+
+    // Credentials for the admin user to login.
+    inline constexpr const char* USERNAME = "admin";
+    inline constexpr const char* PASSWORD = "admin";
+
 
     constexpr const char* ALLOWED_ORIGINS[] = {
         "http://localhost:5173",

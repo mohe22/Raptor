@@ -8,6 +8,7 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
     },
     ...options,
   });
+  console.log(res);
   if (!res.ok) {
     const text = await res.text();
     let message = "Request failed";

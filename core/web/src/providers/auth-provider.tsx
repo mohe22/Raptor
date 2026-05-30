@@ -5,7 +5,9 @@ function deleteTokenCookie() {
   document.cookie = "token=; path=/; max-age=0";
 }
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { data, isLoading } = useMe();
+  const { data, isLoading, status } = useMe();
+
+  console.log(status, isLoading);
 
   function logout() {
     deleteTokenCookie();

@@ -12,22 +12,21 @@ namespace Raptor::Core::Api {
             Config::ALLOWED_ORIGINS,
             Config::ALLOWED_ORIGINS + Config::ALLOWED_ORIGINS_COUNT
         );
-
         drogon::app().registerSyncAdvice(
-            [&](const drogon::HttpRequestPtr& req)
-                -> drogon::HttpResponsePtr {
+            [](const drogon::HttpRequestPtr& req) -> drogon::HttpResponsePtr {
                 if (req->method() != drogon::Options)
                     return nullptr;
-
                 std::string origin = req->getHeader("Origin");
+                auto it = std::find(
+                    Config::ALLOWED_ORIGINS,
+                    Config::ALLOWED_ORIGINS + Config::ALLOWED_ORIGINS_COUNT,
+                    origin
+                );
                 auto resp = drogon::HttpResponse::newHttpResponse();
-
-                if (std::find(allowedOrigins.begin(), allowedOrigins.end(), origin)
-                        != allowedOrigins.end()) {
+                if (it != Config::ALLOWED_ORIGINS + Config::ALLOWED_ORIGINS_COUNT) {
                     resp->addHeader("Access-Control-Allow-Origin", origin);
                     resp->addHeader("Access-Control-Allow-Credentials", "true");
                 }
-
                 resp->addHeader("Access-Control-Allow-Methods",
                                 "GET, POST, PUT, DELETE, OPTIONS");
                 resp->addHeader("Access-Control-Allow-Headers",
@@ -38,11 +37,15 @@ namespace Raptor::Core::Api {
             });
 
         drogon::app().registerPostHandlingAdvice(
-            [&](const drogon::HttpRequestPtr&  req,
-                             const drogon::HttpResponsePtr& resp) {
+            [](const drogon::HttpRequestPtr& req,
+               const drogon::HttpResponsePtr& resp) {
                 std::string origin = req->getHeader("Origin");
-                if (std::find(allowedOrigins.begin(), allowedOrigins.end(), origin)
-                        != allowedOrigins.end()) {
+                auto it = std::find(
+                    Config::ALLOWED_ORIGINS,
+                    Config::ALLOWED_ORIGINS + Config::ALLOWED_ORIGINS_COUNT,
+                    origin
+                );
+                if (it != Config::ALLOWED_ORIGINS + Config::ALLOWED_ORIGINS_COUNT) {
                     resp->addHeader("Access-Control-Allow-Origin", origin);
                     resp->addHeader("Access-Control-Allow-Credentials", "true");
                 }
@@ -52,7 +55,6 @@ namespace Raptor::Core::Api {
                                 "Content-Type, Authorization, X-Requested-With");
                 resp->addHeader("Vary", "Origin");
             });
-
         auto notFound = drogon::HttpResponse::newHttpResponse();
         notFound->setStatusCode(drogon::k404NotFound);
         notFound->setBody("Not Found");
@@ -65,7 +67,7 @@ namespace Raptor::Core::Api {
     inline void run() {
         drogon::app()
             .setThreadNum(Config::BACKEND_THREADS)
-            .setLogLevel(Config::BACKEND_LOG_LEVEL
+            .setLogLevel(Config::BACKEND_LOG
                   ? trantor::Logger::kDebug
                   : trantor::Logger::kFatal)
             .run();
