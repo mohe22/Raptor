@@ -1,0 +1,10 @@
+CompileFlags:
+  CompilationDatabase: /home/mohe/Documents/C++/C2-Raptor
+  Add:
+    [
+      -std=c++23,
+      -I/home/mohe/Documents/C++/C2-Raptor,
+      -I/home/mohe/Documents/C++/C2-Raptor/common,
+      -I/home/mohe/Documents/C++/C2-Raptor/libs/drogon/install/include,
+      -I/home/mohe/Documents/C++/C2-Raptor/libs/drogon/trantor,
+    ]
