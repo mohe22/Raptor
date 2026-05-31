@@ -10,14 +10,14 @@ class UdpSession : public Base {
         : Base(id, Common::Types::ServerType::UDP)
         , address_(std::move(address)){}
 
-        Net::Result<std::pair<std::string_view, uint16_t>> getAddressStr() const noexcept override {
+        std::string getAddressStr() const noexcept override {
             auto ipRes = address_.getIp();
-            if (!ipRes) return std::unexpected(ipRes.error());
+            if (!ipRes) return "";
 
             auto portRes = address_.getPort();
-            if (!portRes) return std::unexpected(portRes.error());
+            if (!portRes) return "";
 
-            return std::make_pair(ipRes.value().data(), portRes.value());
+            return std::format("{}:{}", ipRes.value().data(), portRes.value());
         }
         Net::Address getAddress() const noexcept {
             return address_;

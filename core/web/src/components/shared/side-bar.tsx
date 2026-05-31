@@ -10,10 +10,14 @@ import {
   Activity,
 } from "lucide-react";
 import { LayoutDashboard, PlugIcon, ServerIcon } from "lucide-react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useParams } from "react-router";
 import { useGetAllServers } from "../../features/servers/queries";
 import { toast } from "sonner";
 import type { ServerInfo } from "../../types/server";
+import { getOSConfig, iconMap, sessionOSConfig } from "../../lib/data";
+import { useGetSessionsForServer } from "../../features/session/queries";
+import type { Session } from "../../types/session";
+import { Skeleton } from "../ui/skeleton";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -23,15 +27,95 @@ const navItems = [
 
 declare const __APP_VERSION__: string;
 
+function ServerAgents({
+  serverName,
+  isCollapsed,
+}: {
+  serverName: string;
+  isCollapsed: boolean;
+}) {
+  /*
+  {
+      "connectedTo": "api",
+      "id": 1,
+      "idleSeconds": 84,
+      "protocol": "TCP",
+      "remoteAddress": "127.0.0.1:37760",
+      "status": "Connected",
+      "uptimeSeconds": 84
+  }
+  */
+  const { data: agents = [], isLoading } = useGetSessionsForServer(serverName);
+  const { agentId: selectedAgentId } = useParams();
+
+  if (isCollapsed) return null;
+
+  if (isLoading) {
+    return (
+      <div className="ml-3 mt-0.5 space-y-1 border-l border-sidebar-border pl-2.5">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-2 px-2 py-1">
+            <Skeleton className="size-4 shrink-0" />
+            <Skeleton className="h-3 w-24" />
+            <Skeleton className="ml-auto h-3 w-8" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (agents.length === 0) {
+    return (
+      <div className="ml-3 mt-0.5 border-l border-sidebar-border pl-2.5">
+        <p className="py-1 font-mono text-[10px] text-muted-foreground">
+          no agents
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ml-3 mt-0.5 space-y-0.5 border-l border-sidebar-border pl-2.5">
+      {agents.map((agent: Session) => {
+        const osConfig = sessionOSConfig["Arch"] || sessionOSConfig.Unknown;
+        return (
+          <Link
+            key={agent.id}
+            to={`/agent/${agent.connectedTo}/${agent.id}`}
+            className={cn(
+              "flex items-center gap-2 px-2 py-1 font-mono text-[11px] transition-all",
+              selectedAgentId === String(agent.id)
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
+            )}
+          >
+            <span className="text-base shrink-0" title={osConfig.label}>
+              {osConfig.emoji}
+            </span>
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full status-online" />
+            {/*<span className="truncate">
+              {agent.username}@{agent.host}
+            </span>
+            <span className="ml-auto flex items-center gap-1.5 text-[9px] text-muted-foreground">
+              {agent.country && <span>{agent.country}</span>}
+              {!agent.country && agent.primaryIP && (
+                <span>{agent.primaryIP.slice(0, 8)}</span>
+              )}
+            </span>*/}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const pathname = location.pathname;
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [expandedServerId, setExpandedServerId] = useState<string | null>(null);
 
-  const { data, isLoading, error } = useGetAllServers();
+  const { data, error } = useGetAllServers();
   const servers: ServerInfo[] = data ?? [];
-  console.log(servers);
   useEffect(() => {
     if (error) {
       toast.error("Failed to fetch servers", {
@@ -84,6 +168,7 @@ const Sidebar: React.FC = () => {
           )}
         </button>
       </div>
+
       {/* Status Bar */}
       {!isCollapsed && (
         <div className="flex items-center justify-between border-b border-sidebar-border bg-sidebar-accent/30 px-4 py-2">
@@ -140,12 +225,10 @@ const Sidebar: React.FC = () => {
             </p>
           )}
 
-          {isLoading && !isCollapsed && (
-            <p className="px-2 text-[11px] text-muted-foreground">Loading...</p>
-          )}
-
           {servers.map((server) => {
             const isExpanded = expandedServerId === server.config.instanceName;
+            const typeConfig = getOSConfig(server.type);
+            const TypeIcon = iconMap[typeConfig?.icon || "server"] || Server;
 
             return (
               <div key={server.config.instanceName}>
@@ -165,7 +248,7 @@ const Sidebar: React.FC = () => {
                   )}
                   title={isCollapsed ? server.config.instanceName : undefined}
                 >
-                  <Server className="h-3.5 w-3.5" />
+                  <TypeIcon className={cn("h-3.5 w-3.5", typeConfig?.color)} />
 
                   {!isCollapsed && (
                     <>
@@ -176,10 +259,10 @@ const Sidebar: React.FC = () => {
                         className={cn(
                           "h-1.5 w-1.5 shrink-0 rounded-full",
                           server.status === "running"
-                            ? "bg-green-500"
+                            ? "status-online"
                             : server.status === "error"
                               ? "bg-destructive"
-                              : "bg-muted-foreground",
+                              : "status-offline",
                         )}
                       />
                       <span className="font-mono text-[10px] text-muted-foreground">
@@ -193,6 +276,13 @@ const Sidebar: React.FC = () => {
                     </>
                   )}
                 </button>
+
+                {isExpanded && !isCollapsed && (
+                  <ServerAgents
+                    serverName={server.config.instanceName}
+                    isCollapsed={isCollapsed}
+                  />
+                )}
               </div>
             );
           })}

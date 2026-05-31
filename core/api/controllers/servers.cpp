@@ -6,9 +6,11 @@
 void Server::getServers( const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback){
     try {
         auto& servers = Raptor::Core::Context::get().servers();
-        const auto& serversInfo = servers.getServersInfo();
+        const Raptor::Core::Servers::ServersInfoList& serversInfo = servers.getServersInfo();
 
         Json::Value json(Json::arrayValue);
+
+
 
         for (const auto& s : serversInfo) {
             Json::Value item;

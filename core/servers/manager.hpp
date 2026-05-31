@@ -1,54 +1,110 @@
 #pragma once
-
 #include "base.hpp"
+#include "core/session/manager.hpp"
 
 namespace Raptor::Core::Servers {
 
+    /**
+     * @brief Snapshot of a server's current state for reporting to the UI.
+     *
+     * Populated from a running server instance.
+     */
     struct ServerInfo {
-        const Raptor::Core::Servers::ServerConfig config;
-        const Raptor::Core::Servers::ServerStatus status;
-        const std::string error;
-        Common::Types::ServerType type;
-        const size_t sessionCounter;
-        uint64_t uptimeSeconds{};
-        const uint64_t rxBytes{};
-        const uint64_t txBytes{};
+        const ServerConfig        config;          ///< Server configuration (ip, port, name, etc.).
+        const ServerStatus        status;          ///< Current lifecycle status.
+        const std::string         error;           ///< Last error message, empty if none.
+        Common::Types::ServerType type;            ///< Protocol type (TCP, UDP, etc.).
+        const size_t              sessionCounter;  ///< Number of active sessions.
+        uint64_t                  uptimeSeconds{}; ///< Seconds since server started.
+        const uint64_t            rxBytes{};       ///< Total bytes received.
+        const uint64_t            txBytes{};       ///< Total bytes sent.
+
+
+
     };
+
     using ServersInfoList = std::vector<ServerInfo>;
 
+    /**
+     * @brief Owns and manages all running server instances.
+     *
+     * Each server is identified by its instance name from ServerConfig.
+     * Servers are created, started, paused, resumed, and stopped through this manager.
+     */
     class Manager {
-        public:
-            Manager() = default;
-            ~Manager();
+    public:
+        Manager()  = default;
+        ~Manager();
 
-            /**
-             * @brief Factory: creates and starts a server by type.
-             * @return true if the server was created and started successfully.
-             */
-            bool createServer(Common::Types::ServerType type, ServerConfig config);
+        /**
+         * @brief Creates and starts a server of the given type.
+         *
+         * @param type    Protocol type (TCP, UDP, etc.).
+         * @param config  Server configuration.
+         * @return        true if the server was created and started successfully.
+         */
+        bool createServer(Common::Types::ServerType type, ServerConfig config);
 
-            /**
-             * @brief Stops and removes a server by name.
-             */
-            bool stopServer(const std::string& name);
+        /**
+         * @brief Stops and removes a server by instance name.
+         *
+         * @param name  Instance name from ServerConfig.
+         * @return      true if found and stopped.
+         */
+        bool stopServer(const std::string& name);
 
-            bool pauseServer(const std::string& name);
-            bool resumeServer(const std::string& name);
+        /** @brief Pauses a running server by instance name. */
+        bool pauseServer(const std::string& name);
 
-            const ServerConfig getServerConfig(const std::string& name) const noexcept;
-            bool isServerRunning(const std::string& name) const noexcept;
-            bool hasError(const std::string& name) const noexcept;
-            ServerStatus getServerStatus(const std::string& name) const noexcept;
-            void getServerMetrics(const std::string& name, uint64_t& rxBytes, uint64_t& txBytes) const noexcept;
-            void stopAll() noexcept;
-            void joinAll() noexcept;
+        /** @brief Resumes a paused server by instance name. */
+        bool resumeServer(const std::string& name);
 
-            ServersInfoList getServersInfo() const noexcept;
+        /** @brief Returns the config of a server by instance name. */
+        const ServerConfig getServerConfig(const std::string& name) const noexcept;
 
-            [[nodiscard]] std::size_t count() const noexcept;
+        /** @brief Returns true if the server is currently running. */
+        bool isServerRunning(const std::string& name) const noexcept;
 
-        private:
-            std::unordered_map<std::string, std::unique_ptr<Base>> servers_;
-};
+        /** @brief Returns true if the server has a recorded error. */
+        bool hasError(const std::string& name) const noexcept;
+
+        /** @brief Returns the current status of a server by instance name. */
+        ServerStatus getServerStatus(const std::string& name) const noexcept;
+
+        /**
+         * @brief Returns rx/tx byte counters for a server.
+         *
+         * @param name     Instance name.
+         * @param rxBytes  Out: total bytes received.
+         * @param txBytes  Out: total bytes sent.
+         */
+        void getServerMetrics(const std::string& name, uint64_t& rxBytes, uint64_t& txBytes) const noexcept;
+
+        /** @brief Stops all managed servers. */
+        void stopAll() noexcept;
+
+        /** @brief Blocks until all managed servers have finished. */
+        void joinAll() noexcept;
+
+        /**
+         * @brief Returns a snapshot list of all servers' current state.
+         *
+         * Safe to read from any thread — no live references held.
+         */
+        ServersInfoList getServersInfo() const noexcept;
+
+        /** @brief Returns the number of managed servers. */
+        [[nodiscard]] std::size_t count() const noexcept;
+
+        bool hasServer(const std::string& name) const noexcept;
+
+        Server::SessionManager* getSessionManager(const std::string& name) const  noexcept;
+
+    private:
+        /// Owns all server instances — key is instance name.
+        std::unordered_map<std::string, std::unique_ptr<Base>> servers_;
+
+        mutable std::shared_mutex mutex_;
+    };
 
 } // namespace Raptor::Core::Servers

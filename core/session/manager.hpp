@@ -3,22 +3,33 @@
 #include "core/session/base.hpp"
 #include "core/config.hpp"
 #include "libs/net/include/address.hpp"
+#include <cstdint>
+#include <print>
 #include <shared_mutex>
 #include <mutex>
 #include <unordered_map>
+#include "type.hpp"
 #include "utils.hpp"
 
 namespace Raptor::Core::Server {
-    inline bool operator==(
-        const Net::Result<std::pair<std::string_view, uint16_t>>& res,
-        const Net::Address& addr) noexcept
-    {
-        if (!res) return false;
-        auto ip   = addr.getIp();
-        auto port = addr.getPort();
-        if (!ip || !port) return false;
-        return res->first == ip.value() && res->second == port.value();
-    }
+
+
+    /**
+     * @brief session's state for reporting to the UI.
+     *
+     * Gets populated from Session::Base
+     */
+    struct SessionInfo {
+        uint64_t                  id;             ///< Unique session id.
+        Common::Types::ServerType protocol;       ///< Protocol type (TCP, UDP, etc.).
+        Session::Status           status;         ///< Current lifecycle status.
+        uint64_t  idleSeconds;    ///< Seconds since last received data.
+        uint64_t  uptimeSeconds;  ///< Seconds since session was created.
+        std::string remoteAddress;  ///< Remote ip:port as a human-readable string.
+    };
+    using SessionsInfoList = std::vector<SessionInfo>;
+
+
 
     /**
      * @brief Owns and manages all active sessions regardless of protocol type.
@@ -81,10 +92,14 @@ namespace Raptor::Core::Server {
         T* getOrCreate(const Net::Address& address) {
             static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
 
-            std::unique_lock lock(mutex_);
+            auto ip   = address.getIp();
+            auto port = address.getPort();
+            if (!ip || !port) return nullptr;
+            const std::string target = std::format("{}:{}", ip.value(), port.value());
 
+            std::unique_lock lock(mutex_);
             for (const auto& [id, session] : sessions_) {
-                if (session->getAddressStr() == address)
+                if (session->getAddressStr() == target)
                     return static_cast<T*>(session.get());
             }
 
@@ -148,13 +163,7 @@ namespace Raptor::Core::Server {
             auto it = sessions_.find(id);
             return it != sessions_.end() ? it->second.get() : nullptr;
         }
-        Session::Base* find(const Net::Address& address) const {
-            std::shared_lock lock(mutex_);
-            for (const auto& [id, session] : sessions_)
-                if (session->getAddressStr() == address)
-                    return session.get();
-            return nullptr;
-        }
+
         /**
          * @brief Checks if a session exists.
          *
@@ -225,6 +234,24 @@ namespace Raptor::Core::Server {
             for (const auto& [id, session] : sessions_)
                 if (auto* ptr = dynamic_cast<T*>(session.get()))
                     fn(ptr);
+        }
+        SessionsInfoList getSessionsInfo() const {
+            std::shared_lock lock(mutex_);
+            SessionsInfoList data;
+            data.reserve(sessions_.size());
+
+            for (const auto& [id, session] : sessions_) {
+                data.emplace_back(
+                    SessionInfo{
+                        id,
+                        session->type(),
+                        session->status(),
+                        session->idleSeconds(),
+                        session->uptimeSeconds(),
+                        session->getAddressStr()
+                    });
+            };
+            return data;
         }
 
 

@@ -163,10 +163,11 @@ namespace Raptor::Core::Servers {
             */
         void stop() noexcept override {
             changeStatus(ServerStatus::Stopped);
-            server_.stop();
             epoll_.stop();
+            server_.stop();
             join();
         }
+
 
         bool isRunning() const noexcept  {
             return Base::isRunning() && !epoll_.isStopped();

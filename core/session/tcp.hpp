@@ -30,14 +30,14 @@ class TcpSession :
             return connection_->send(buf, len);
         }
 
-        Net::Result<std::pair<std::string_view, uint16_t>> getAddressStr() const noexcept override {
+        std::string getAddressStr() const noexcept override {
             auto ipRes = connection_->getIp();
-            if (!ipRes) return std::unexpected(ipRes.error());
+            if (!ipRes) return "";
 
             auto portRes = connection_->getPort();
-            if (!portRes) return std::unexpected(portRes.error());
+            if (!portRes) return "";
 
-            return std::make_pair(ipRes.value().data(), portRes.value());
+            return std::format("{}:{}", ipRes.value().data(), portRes.value());
         }
 
 

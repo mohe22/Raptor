@@ -167,3 +167,14 @@ export function getOSConfig(os: string): OSConfig {
 
   return OS_CONFIGS.Unknown;
 }
+
+export const sessionOSConfig: Record<OSKey, OSConfig> = OS_CONFIGS;
+// export const serverTypeConfig: Record<
+//   ServerType,
+//   { label: string; color: string; icon: string }
+// > = {
+//   HTTP: { label: "HTTP", color: "text-chart-1", icon: "globe" },
+//   TCP: { label: "TCP", color: "text-chart-3", icon: "radio" },
+//   DNS: { label: "DNS", color: "text-chart-5", icon: "server" },
+//   UDP: { label: "UDP", color: "text-chart-2", icon: "shield" },
+// };

@@ -7,7 +7,7 @@ class Server : public drogon::HttpController<Server>
   public:
     METHOD_LIST_BEGIN
     METHOD_ADD(Server::getServers,
-               "/servers",
+               "/get-servers",
                Get);
     METHOD_ADD(Server::pauseServer,
                "/pause/{1}",

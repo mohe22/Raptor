@@ -31,7 +31,7 @@ namespace Raptor::Core::Servers {
 
     void TcpServer::closeClient(Session::TcpSession* client, const Net::Error& err) noexcept {
         callbacks_.error(client, err);
-        epoll_.closeDescriptor(client); // triggers onClose → destroyClient
+        epoll_.closeDescriptor(client);
     }
 
     bool TcpServer::rearmClient(Session::TcpSession* client) noexcept {
@@ -65,8 +65,8 @@ namespace Raptor::Core::Servers {
             return;
         }
 
-        auto [ip, port] = client->getAddressStr().value_or(std::make_pair(std::string_view{"?"}, uint16_t{0}));
-        std::println("[ACCEPT] session {} connected from {}:{}", client->id(), ip, port);
+        std::println("[ACCEPT] session {} connected from {}", client->id(), client->getAddressStr());
+
     }
 
     void TcpServer::onRead(Session::TcpSession* client) noexcept {
@@ -93,7 +93,7 @@ namespace Raptor::Core::Servers {
 
         if (!r) {
             if (r.error() == Net::Error::WouldBlock) {
-                rearmClient(client); // buffer full — retry on next EPOLLOUT
+                rearmClient(client); // buffer full, retry on next EPOLLOUT
                 return;
             }
             closeClient(client, r.error());
