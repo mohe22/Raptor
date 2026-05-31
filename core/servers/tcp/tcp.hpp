@@ -120,7 +120,7 @@ namespace Raptor::Core::Servers {
             * @param name   Human-readable server name.
             */
         TcpServer(const ServerConfig& config)
-        : Base(config)
+        : Base(config, Common::Types::ServerType::TCP)
         , callbacks_(TcpCallbacks::makeDefault()) {}
 
         ~TcpServer() noexcept override {
@@ -211,13 +211,14 @@ namespace Raptor::Core::Servers {
 
         /// Application-level session and event callbacks.
         TcpCallbacks callbacks_;
+
         void destroyClient(Session::TcpSession* client) noexcept;
-         void closeClient  (Session::TcpSession* client, const Net::Error& err) noexcept;
-         bool rearmClient  (Session::TcpSession* client) noexcept;
-         void onAccept  () noexcept;
-         void onRead    (Session::TcpSession* client) noexcept;
-         void onWrite   (Session::TcpSession* client) noexcept;
-         void onTimeout () noexcept;
+        void closeClient  (Session::TcpSession* client, const Net::Error& err) noexcept;
+        bool rearmClient  (Session::TcpSession* client) noexcept;
+        void onAccept  () noexcept;
+        void onRead    (Session::TcpSession* client) noexcept;
+        void onWrite   (Session::TcpSession* client) noexcept;
+        void onTimeout () noexcept;
 
     };
 

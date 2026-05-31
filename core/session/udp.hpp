@@ -7,7 +7,7 @@ namespace Raptor::Core::Session {
 class UdpSession : public Base {
     public:
        UdpSession(Net::Address address, uint64_t id)
-        : Base(id, Type::UDP)
+        : Base(id, Common::Types::ServerType::UDP)
         , address_(std::move(address)){}
 
         Net::Result<std::pair<std::string_view, uint16_t>> getAddressStr() const noexcept override {

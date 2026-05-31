@@ -2,18 +2,13 @@
 
 #include "base.hpp"
 
-#include "core/session/base.hpp"
-
-#include <string>
-#include <memory>
-#include <unordered_map>
-
 namespace Raptor::Core::Servers {
 
     struct ServerInfo {
         const Raptor::Core::Servers::ServerConfig config;
         const Raptor::Core::Servers::ServerStatus status;
         const std::string error;
+        Common::Types::ServerType type;
         const size_t sessionCounter;
         uint64_t uptimeSeconds{};
         const uint64_t rxBytes{};
@@ -30,7 +25,7 @@ namespace Raptor::Core::Servers {
              * @brief Factory: creates and starts a server by type.
              * @return true if the server was created and started successfully.
              */
-            bool createServer(Session::Type type, ServerConfig config);
+            bool createServer(Common::Types::ServerType type, ServerConfig config);
 
             /**
              * @brief Stops and removes a server by name.

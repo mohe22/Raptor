@@ -14,7 +14,7 @@ class TcpSession :
         public:
 
         TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id)
-        : Base(id, Type::TCP), connection_(std::move(conn)){
+        : Base(id, Common::Types::ServerType::TCP), connection_(std::move(conn)){
             fd = connection_->getSocket();
         }
         ~TcpSession() noexcept {

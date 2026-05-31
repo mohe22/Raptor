@@ -16,7 +16,7 @@ namespace Raptor::Core::Servers {
         return servers_.at(name)->config();
     }
 
-    bool Manager::createServer(Session::Type type, ServerConfig config) {
+    bool Manager::createServer(Common::Types::ServerType type, ServerConfig config) {
         if (!ServerConfig::isValid(config)) {
             Context::get().logs().warn(
                 Db::LogCategory::Server,
@@ -31,11 +31,11 @@ namespace Raptor::Core::Servers {
 
         std::unique_ptr<Base> server;
         switch (type) {
-            case Session::Type::TCP:
+            case Common::Types::ServerType::TCP:
             server = std::make_unique<TcpServer>(config);
-            break;
-            case Session::Type::UDP:
-            server = std::make_unique<UdpServer>(config);
+                break;
+            case Common::Types::ServerType::UDP:
+                server = std::make_unique<UdpServer>(config);
             break;
             default:
             return false;
@@ -44,7 +44,7 @@ namespace Raptor::Core::Servers {
         Context::get().logs().info(
             Db::LogCategory::Server,
             "SERVER_CREATED",
-            std::format("[{}] {} server created", config.instanceName, Session::ToString(type)),
+            std::format("[{}] {} server created", config.instanceName, Common::Types::ToString(type)),
             config.toJsonStr()
         );
 
@@ -149,6 +149,7 @@ namespace Raptor::Core::Servers {
                 server->config(),
                 server->status(),
                 server->getErrorMsgStr(),
+                server->type(),
                 server->sessionManager.count(),
                 server->uptimeSeconds(),
                 rx,

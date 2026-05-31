@@ -1,22 +1,13 @@
 #pragma once
-#include <cstdint>
-#include <string_view>
-#include <utility>
+
 #include "core/session/queue.hpp"
 #include "libs/net/include/types.hpp"
+#include <utility>
 #include "type.hpp"
 
 namespace Raptor::Core::Session {
 
-    enum class Type { TCP, UDP, HTTP };
-    static const char* ToString(Type type) noexcept {
-        switch (type) {
-            case Type::TCP:   return "TCP";
-            case Type::UDP:   return "UDP";
-            case Type::HTTP:  return "HTTP";
-            default:  return "Unknown";
-        }
-    }
+
 
     /**
      * @brief Lifecycle status of a session.
@@ -51,13 +42,14 @@ namespace Raptor::Core::Session {
 
         virtual ~Base() noexcept = default;
 
-        Base(const uint64_t id, Type type)
+        Base(const uint64_t id, Common::Types::ServerType type)
             : id_(id)
             , type_(type)
             , status_(Status::Connected)
             , connectedAt_(Common::Types::Clock::now())
             , lastActive_(Common::Types::Clock::now())
         {}
+
 
 
         virtual Net::Result<size_t> read(void* buf, size_t len) noexcept
@@ -69,12 +61,11 @@ namespace Raptor::Core::Session {
 
 
         uint64_t id()   const noexcept { return id_;   }
-        Type     type() const noexcept { return type_; }
+        const Common::Types::ServerType     type() const noexcept { return type_; }
 
 
         /// Current lifecycle status.
         Status status() const noexcept { return status_; }
-
         /// Transition to a new status.
         void setStatus(Status s) noexcept { status_ = s; }
 
@@ -132,12 +123,7 @@ namespace Raptor::Core::Session {
         void print() const noexcept {
             std::println("Session {{ id={} type={} status={} idle={}s uptime={}s }}",
                 id_,
-                [&]{ switch(type_) {
-                    case Type::TCP:  return "TCP";
-                    case Type::UDP:  return "UDP";
-                    case Type::HTTP: return "HTTP";
-                    default:         return "Unknown";
-                }}(),
+                ToString(type_),
                 ToString(status_),
                 idleSeconds(),
                 uptimeSeconds()
@@ -149,7 +135,7 @@ namespace Raptor::Core::Session {
 
     private:
         uint64_t   id_;
-        Type       type_;
+        Common::Types::ServerType   type_;
         Status     status_;
         Common::Types::TimePoint  connectedAt_;  ///< Set once at construction, never changes.
         Common::Types::TimePoint  lastActive_;   ///< Updated on every successful read via touch().

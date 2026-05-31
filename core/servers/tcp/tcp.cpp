@@ -1,7 +1,4 @@
 #include "tcp.hpp"
-#include <print>
-#include "common/utils.hpp"
-#include "libs/net/include/platform.hpp"
 
 namespace Raptor::Core::Servers {
 
@@ -107,11 +104,9 @@ namespace Raptor::Core::Servers {
     }
 
     void TcpServer::onTimeout() noexcept {
-        sessionManager.forEachOf<Session::TcpSession>(Session::Type::TCP,
-            [&](Session::TcpSession* client) {
-                rearmClient(client);
-            }
-        );
+        sessionManager.forEachOf<Session::TcpSession>([&](Session::TcpSession* client) {
+            rearmClient(client);
+        });
         callbacks_.timeout();
     }
 

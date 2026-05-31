@@ -110,7 +110,7 @@ namespace Raptor::Core::Servers {
          * @param config Server configuration (IP, port, epoll timeout, etc.).
          */
         UdpServer(const ServerConfig& config)
-        : Base(config)
+        : Base(config, Common::Types::ServerType::UDP)
         , callbacks_(UdpCallbacks::makeDefault()) {}
 
         /**

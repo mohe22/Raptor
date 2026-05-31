@@ -287,14 +287,16 @@ namespace Raptor::Core::Servers {
     public:
 
         /**
-
          * @brief Constructs the server base object.
          */
-        explicit Base(const ServerConfig& config)
-            : config_(config){};
-
-
+        explicit Base(const ServerConfig& config, Common::Types::ServerType type)
+            : config_(config), type_(type){};
         virtual ~Base() = default;
+
+        Base(const Base&)    = delete;
+        Base& operator=(const Base&) = delete;
+        Base(Base&&) = delete;
+        Base& operator=(Base&&)= delete;
 
         bool hasError() const noexcept {
             return error.has();
@@ -397,7 +399,7 @@ namespace Raptor::Core::Servers {
 
            void getRxBytes(uint64_t& n) const noexcept { n = rxBytes_.load(std::memory_order_relaxed); }
            void getTxBytes(uint64_t& n) const noexcept { n = txBytes_.load(std::memory_order_relaxed); }
-
+           const Common::Types::ServerType type() const noexcept { return type_; }
            Server::SessionManager sessionManager;
     protected:
 
@@ -433,6 +435,8 @@ namespace Raptor::Core::Servers {
 
         std::atomic<uint64_t> rxBytes_{0};
         std::atomic<uint64_t> txBytes_{0};
+
+        Common::Types::ServerType type_;
 
 
     };

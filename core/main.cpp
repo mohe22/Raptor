@@ -3,6 +3,7 @@
 #include <print>
 
 using namespace Raptor::Core;
+using namespace Raptor::Common;
 
 
 int main() {
@@ -16,13 +17,13 @@ int main() {
 
         auto& mgr = Context::get().servers();
 
-        mgr.createServer(Session::Type::UDP, {
+        mgr.createServer(Raptor::Common::Types::ServerType::UDP, {
             .ip = "0.0.0.0",
             .port = 9090,
             .instanceName = "metrics"
         });
 
-        mgr.createServer(Session::Type::TCP, {
+        mgr.createServer(Raptor::Common::Types::ServerType::TCP, {
             .ip = "0.0.0.0",
             .port = 8080,
             .instanceName = "api"

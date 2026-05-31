@@ -1,9 +1,9 @@
 import { Navigate, Outlet } from "react-router";
 import { useAuth } from "../../providers/auth-context";
 import { Spinner } from "../ui/spinner";
+import Sidebar from "../shared/side-bar";
 export function ProtectedRoute() {
-  const { userId, isLoading, error } = useAuth();
-  console.log(error);
+  const { userId, isLoading } = useAuth();
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -17,7 +17,7 @@ export function ProtectedRoute() {
   return (
     // <SocketProvider>
     <div className="flex">
-      {/*<Sidebar />*/}
+      <Sidebar />
       <main className="flex flex-1 flex-col overflow-hidden">
         <Outlet />
       </main>

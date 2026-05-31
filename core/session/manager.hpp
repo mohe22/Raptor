@@ -1,13 +1,12 @@
 #pragma once
+
+#include "core/session/base.hpp"
+#include "core/config.hpp"
+#include "libs/net/include/address.hpp"
 #include <shared_mutex>
 #include <mutex>
-#include <thread>
 #include <unordered_map>
-#include <memory>
-#include "core/session/base.hpp"
-#include "libs/net/include/address.hpp"
 #include "utils.hpp"
-#include "core/config.hpp"
 
 namespace Raptor::Core::Server {
     inline bool operator==(
@@ -20,6 +19,7 @@ namespace Raptor::Core::Server {
         if (!ip || !port) return false;
         return res->first == ip.value() && res->second == port.value();
     }
+
     /**
      * @brief Owns and manages all active sessions regardless of protocol type.
      *
@@ -77,17 +77,20 @@ namespace Raptor::Core::Server {
 
 
 
-        // Todo: change it later.
         template<typename T>
         T* getOrCreate(const Net::Address& address) {
             static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
-            if (auto* s = find(address))
-                   return static_cast<T*>(s);
+
+            std::unique_lock lock(mutex_);
+
+            for (const auto& [id, session] : sessions_) {
+                if (session->getAddressStr() == address)
+                    return static_cast<T*>(session.get());
+            }
+
             auto session = std::make_unique<T>(std::move(address), Common::nextId());
             T* raw = session.get();
-            auto id = raw->id();
-            std::unique_lock lock(mutex_);
-            sessions_.emplace(id, std::move(session));
+            sessions_.emplace(raw->id(), std::move(session));
             return raw;
         }
 
@@ -197,33 +200,33 @@ namespace Raptor::Core::Server {
         template<typename Fn>
         void forEach(Fn&& fn) const {
             std::shared_lock lock(mutex_);
-            for (const auto& [id, session] : sessions_)
+            for (const auto& [_, session] : sessions_)
                 fn(session.get());
         }
-
         /**
          * @brief Iterates over sessions of a specific concrete type.
          *
-         * Casts to T* for you — only call with the matching Session::Type.
-         * Do not call add() or remove() from within fn — deadlock.
+         * Safely skips sessions that are not of type T.
          *
-         * @tparam T     Concrete session type (TcpSession, UdpSession, etc.)
-         * @param  type  Must match T (e.g. T=TcpSession, type=Type::TCP)
-         * @param  fn    Callable receiving T*
+         * @tparam T   Concrete session type (TcpSession, UdpSession, etc.)
+         *             Must inherit from Session::Base.
+         * @param  fn  Callable receiving T*
          *
          * @code
-         *   manager.forEachOf<TcpSession>(Session::Type::TCP, [](TcpSession* s) {
+         *   manager.forEachOf<TcpSession>([](TcpSession* s) {
          *       s->enqueue(heartbeat, len);
          *   });
          * @endcode
          */
         template<typename T, typename Fn>
-        void forEachOf(const Session::Type type, Fn&& fn) const {
+        void forEachOf(Fn&& fn) const {
+            static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
             std::shared_lock lock(mutex_);
             for (const auto& [id, session] : sessions_)
-                if (session->type() == type)
-                    fn(static_cast<T*>(session.get()));
+                if (auto* ptr = dynamic_cast<T*>(session.get()))
+                    fn(ptr);
         }
+
 
 
     private:
@@ -231,27 +234,27 @@ namespace Raptor::Core::Server {
         /// Owns all sessions — key is session id, value is the session itself.
         std::unordered_map<uint64_t, std::unique_ptr<Session::Base>> sessions_;
 
-        /// Shared for reads, exclusive for writes.
         mutable std::shared_mutex mutex_;
-
         std::thread thread_;
         std::atomic<bool> running_{false};
+
+        std::condition_variable_any cv_;
 
         void startMonitor() {
             running_ = true;
             thread_  = std::thread([this] { monitorLoop(); });
         }
-
         void stopMonitor() {
             running_ = false;
+            cv_.notify_one();
             if (thread_.joinable())
                 thread_.join();
         }
 
+
+
         void monitorLoop() {
             while (running_) {
-                if (!running_) break;
-
                 std::vector<uint64_t> toRemove;
                 {
                     std::shared_lock lock(mutex_);
@@ -263,38 +266,26 @@ namespace Raptor::Core::Server {
                             continue;
                         }
 
-                        if (idle >= Config::TIMEOUT_SECONDS && !session->isDisconnected()) {
-                            // std::println("[Monitor] id={} idle={}s → Disconnected (timeout)",
-                                         // id, idle);
+                        if (idle >= Config::TIMEOUT_SECONDS) {
                             session->setStatus(Session::Status::Disconnected);
                             toRemove.push_back(id);
                             continue;
                         }
 
-                        if (idle >= Config::IDLE_SECONDS && session->isConnected()) {
-                            // std::println("[Monitor] id={} idle={}s → Idle", id, idle);
+                        if (idle >= Config::IDLE_SECONDS && session->isConnected())
                             session->setStatus(Session::Status::Idle);
-                            continue;
-                        }
-
-                        // still active — just print stats
-                        // std::println("[Monitor] id={} status={} idle={}s uptime={}s",
-                        //              id,
-                        //              Session::ToString(session->status()),
-                        //              idle,
-                        //              session->uptimeSeconds());
                     }
                 }
 
                 if (!toRemove.empty()) {
                     std::unique_lock lock(mutex_);
-                    for (const auto id : toRemove) {
+                    for (const auto id : toRemove)
                         sessions_.erase(id);
-                        // std::println("[Monitor] id={} removed", id);
-                    }
                 }
-            }
 
+                std::shared_lock lock(mutex_);
+                cv_.wait_for(lock, std::chrono::minutes(1), [this] { return !running_; });
+            }
         }
     };
 

@@ -17,17 +17,12 @@ void Server::getServers( const HttpRequestPtr& req, std::function<void(const Htt
             config["ip"] = s.config.ip;
             config["port"] = s.config.port;
             config["ipType"] = (s.config.ipType == Net::IPType::IPv4) ? "IPv4" : "IPv6";
-            config["epollTimeout"] = s.config.epollTimeout;
+            config["timeout"] = s.config.epollTimeout;
             config["instanceName"] = s.config.instanceName;
 
             item["config"] = std::move(config);
-
-            Json::Value status;
-            status["running"] = Raptor::Core::Servers::ToString(s.status);
-            status["connections"] = s.sessionCounter;
-
-            item["status"] = std::move(status);
-
+            item["type"] = Raptor::Common::Types::ToString(s.type);
+            item["status"] = Raptor::Core::Servers::ToString(s.status);
             item["error"] = s.error;
             item["sessionCounter"] = static_cast<Json::UInt64>(s.sessionCounter);
             item["rxBytes"] = static_cast<Json::UInt64>(s.rxBytes);
