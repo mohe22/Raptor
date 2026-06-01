@@ -15,18 +15,11 @@ namespace Raptor::Core::Servers::Tcp::Handlers {
             if (!r)  return std::unexpected{r.error()};
             if (r.value() == 0) break;
 
-            session->parser.feed(buf.data(), r.value());
-
-            if (session->parser.isError()) {
-                std::println("[PARSER] error");
-                return 0;
-            }
+            session->feed(buf.data(), r.value());
 
             totalRead += r.value();
         }
 
-        if (session->parser.isComplete())
-            std::println("\n[PARSER] complete");
 
         return totalRead;
     }

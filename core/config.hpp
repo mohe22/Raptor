@@ -8,7 +8,7 @@ namespace Raptor::Core::Config {
     /// Current server version shown in handshake and logs.
     constexpr const char* VERSION = "1.0.0";
 
-    constexpr std::size_t RECV_BUFFER_SIZE = 4096;
+    constexpr std::size_t RECV_BUFFER_SIZE = 9096;
     /// Size of the per-connection send buffer in bytes.
     constexpr std::size_t SEND_BUFFER_SIZE = 4096;
 

@@ -5,21 +5,16 @@
 #include <cstdio>
 
 
-#include "handlers/onUpload.hpp"
-#include "handlers/onCommand.hpp"
-#include "handlers/onDownload.hpp"
-#include "handlers/onRegister.hpp"
-
-
 
 namespace Raptor::Common::Parsers{
     template <typename T, std::size_t N>
-    class TcpParser : public Base<T, N>{
+    class TcpParser : public ParserBase<T, N>{
         public:
         TcpParser() = default;
         ~TcpParser() = default;
 
         void feed(const T* data, std::size_t len) noexcept override {
+
             // check if we have enough space in the buffer to write the data
             if (!this->buffer.canWrite(len)) {
                  this->buffer.compact();
@@ -27,10 +22,8 @@ namespace Raptor::Common::Parsers{
             size_t written = this->buffer.write(data, len);
 
             while (true) {
-
                 if (this->getState() == State::ReadingHeader) {
                     if (this->buffer.size() < Header::SerializedSize) {
-                        this->setStatus(Status::NeedMore);
                         return;
                     }
                     header_ = Header::deserialize(
@@ -50,41 +43,40 @@ namespace Raptor::Common::Parsers{
                     size_t available = this->buffer.size();
                     size_t remaining = header_.payloadSize - bodyReceived;
 
-                    if (available == 0) {
-                        this->setStatus(Status::NeedMore);
-                        return;
-                    }
+                    if (available == 0)
+                        return; // need more
+
                     size_t toConsume = std::min(available, remaining);
 
 
                     uint8_t* ptr= this->buffer.data();
+
                     switch (header_.type) {
                         case PacketType::Command: {
-                            Handlers::onCommand(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
+                            this->onCommand(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
                             break;
                         }
                         case PacketType::FileUpload:{
-                            Handlers::onUpload(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
+                            this->onUpload(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
                             break;
                         }
                         case PacketType::FileDownload: {
-                            Handlers::onDownload(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
+                            this->onDownload(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
                             break;
                         }
                         case PacketType::Register: {
-                            Handlers::onRegister(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
+                            if (bodyReceived + toConsume < header_.payloadSize) break;
+                            this->onRegister(header_, std::string_view(reinterpret_cast<char*>(ptr), header_.payloadSize));
                             break;
                         }
                     }
 
+
                     size_t consumed = this->buffer.consume(toConsume);
                     bodyReceived += consumed;
-                    if (bodyReceived >= header_.payloadSize) {
+                    if (bodyReceived >= header_.payloadSize)
                         reset();
-                        return;
-                    }
 
-                    this->setStatus(Status::NeedMore);
                     return;
                 }
             }
@@ -94,9 +86,7 @@ namespace Raptor::Common::Parsers{
         size_t bodyReceived{0};
         void reset() noexcept override {
             bodyReceived = 0;
-
             this->setState(State::ReadingHeader);
-            this->setStatus(Status::NeedMore);
             this->buffer.clear();
 
         }

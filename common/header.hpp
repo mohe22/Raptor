@@ -65,6 +65,7 @@ namespace Raptor::Common {
             case PacketType::FileUpload:   return "FileUpload";
             case PacketType::FileDownload: return "FileDownload";
             case PacketType::Command:      return "Command";
+            case PacketType::Register: return "register";
             default:                       return "Unknown";
         }
     }

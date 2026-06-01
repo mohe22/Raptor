@@ -1,7 +1,9 @@
 #pragma once
 
 #include "core/session/queue.hpp"
+#include "header.hpp"
 #include "libs/net/include/types.hpp"
+#include "register.hpp"
 #include "type.hpp"
 
 namespace Raptor::Core::Session {
@@ -36,10 +38,11 @@ namespace Raptor::Core::Session {
     public:
         Base(const Base&)            = delete;
         Base& operator=(const Base&) = delete;
-        Base(Base&&)                 = delete;
-        Base& operator=(Base&&)      = delete;
+        Base(Base&&)= delete;
+        Base& operator=(Base&&) = delete;
 
         virtual ~Base() noexcept = default;
+
 
         /**
          * @brief Constructs a session with a unique id and protocol type.
@@ -209,6 +212,7 @@ namespace Raptor::Core::Session {
         Common::Types::TimePoint      connectedAt_;  ///< Set once at construction, never changes.
         Common::Types::TimePoint      lastActive_;   ///< Updated on every successful read via touch().
         Queue::SendQueue<std::string> sendQueue_;
+        Common::Register information;
     };
 
 } // namespace Raptor::Core::Session

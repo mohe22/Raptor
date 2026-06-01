@@ -4,9 +4,9 @@
 #include "base.hpp"
 #include "libs/net/include/address.hpp"
 namespace Raptor::Core::Session {
-class UdpSession : public Base {
-    public:
-       UdpSession(Net::Address address, uint64_t id)
+    class UdpSession : public Base {
+        public:
+        UdpSession(Net::Address address, uint64_t id)
         : Base(id, Common::Types::ServerType::UDP)
         , address_(std::move(address)){}
 
@@ -24,8 +24,27 @@ class UdpSession : public Base {
         }
 
 
+        // void onCommand(const Common::Header& h, std::string_view body) noexcept override{};
+        // void onUpload(const Common::Header& h, std::string_view body) noexcept override {};
+        // void onDownload(const Common::Header& h, std::string_view body) noexcept override {};
 
-    private:
+        // void onRegister(const Common::Header& h, std::string_view body) noexcept override {
+
+        //     auto result = Common::Register::deserialize(
+        //         std::span<const uint8_t>(
+        //             reinterpret_cast<const uint8_t*>(body.data()),
+        //             body.size()
+        //         )
+        //     );
+
+        //     if (!result) {
+        //         std::println("[onRegister] deserialize failed: {}", result.error());
+        //         return;
+        //     }
+
+
+        // }
+        private:
         Net::Address address_;
     };
 
