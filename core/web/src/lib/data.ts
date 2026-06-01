@@ -11,17 +11,12 @@ import {
   Shield,
   Wifi,
 } from "lucide-react";
-export const STATUS_LABEL: Record<string, string> = {
-  running: "text-primary",
-  paused: "text-yellow-400",
-  error: "text-destructive",
-  stopped: "text-muted-foreground",
-};
-export const STATUS_DOT: Record<string, string> = {
-  running: "status-online animate-pulse",
-  paused: "status-warning animate-pulse",
-  error: "status-error animate-pulse",
-  stopped: "status-offline",
+
+export const SESSION_STATUS_DOT: Record<string, string> = {
+  Connected: "status-online animate-pulse",
+  Idle: "status-warning animate-pulse",
+  Disconnecting: "status-error animate-pulse",
+  Disconnected: "status-offline",
 };
 export const iconMap: Record<
   string,
@@ -169,12 +164,103 @@ export function getOSConfig(os: string): OSConfig {
 }
 
 export const sessionOSConfig: Record<OSKey, OSConfig> = OS_CONFIGS;
-// export const serverTypeConfig: Record<
-//   ServerType,
-//   { label: string; color: string; icon: string }
-// > = {
-//   HTTP: { label: "HTTP", color: "text-chart-1", icon: "globe" },
-//   TCP: { label: "TCP", color: "text-chart-3", icon: "radio" },
-//   DNS: { label: "DNS", color: "text-chart-5", icon: "server" },
-//   UDP: { label: "UDP", color: "text-chart-2", icon: "shield" },
-// };
+
+/**
+ * Get country flag emoji from timezone
+ * @param {string} timezone - e.g. "Asia/Kuala_Lumpur"
+ * @returns {string} Flag emoji or fallback "🌍"
+ */
+export function getFlagByTimezone(timezone) {
+  if (!timezone || typeof timezone !== "string") {
+    return "🌍";
+  }
+
+  const tz = timezone.trim().toLowerCase();
+
+  const timezoneMap = {
+    // Malaysia
+    "asia/kuala_lumpur": "🇲🇾",
+    "asia/kuching": "🇲🇾",
+
+    // Singapore
+    "asia/singapore": "🇸🇬",
+
+    // Indonesia
+    "asia/jakarta": "🇮🇩",
+    "asia/makassar": "🇮🇩",
+    "asia/jayapura": "🇮🇩",
+
+    // Thailand
+    "asia/bangkok": "🇹🇭",
+
+    // Vietnam
+    "asia/ho_chi_minh": "🇻🇳",
+
+    // Philippines
+    "asia/manila": "🇵🇭",
+
+    // Japan
+    "asia/tokyo": "🇯🇵",
+
+    // South Korea
+    "asia/seoul": "🇰🇷",
+
+    // China
+    "asia/shanghai": "🇨🇳",
+    "asia/hong_kong": "🇭🇰",
+    "asia/taipei": "🇹🇼",
+
+    // India
+    "asia/kolkata": "🇮🇳",
+    "asia/new_delhi": "🇮🇳",
+
+    // Saudi Arabia / GCC
+    "asia/riyadh": "🇸🇦",
+    "asia/dubai": "🇦🇪",
+
+    // Turkey
+    "europe/istanbul": "🇹🇷",
+
+    // UK
+    "europe/london": "🇬🇧",
+
+    // USA
+    "america/new_york": "🇺🇸",
+    "america/chicago": "🇺🇸",
+    "america/los_angeles": "🇺🇸",
+    "america/denver": "🇺🇸",
+
+    // Brazil
+    "america/sao_paulo": "🇧🇷",
+
+    // Germany
+    "europe/berlin": "🇩🇪",
+    "europe/paris": "🇫🇷",
+
+    // Australia
+    "australia/sydney": "🇦🇺",
+    "australia/melbourne": "🇦🇺",
+  };
+
+  // Direct match
+  if (timezoneMap[tz]) {
+    return timezoneMap[tz];
+  }
+
+  // Partial matching (more flexible)
+  if (tz.includes("kuala_lumpur") || tz.includes("malaysia")) return "🇲🇾";
+  if (tz.includes("singapore")) return "🇸🇬";
+  if (tz.includes("jakarta") || tz.includes("indonesia")) return "🇮🇩";
+  if (tz.includes("bangkok") || tz.includes("thailand")) return "🇹🇭";
+  if (tz.includes("tokyo") || tz.includes("japan")) return "🇯🇵";
+  if (tz.includes("seoul") || tz.includes("korea")) return "🇰🇷";
+  if (tz.includes("shanghai") || tz.includes("china")) return "🇨🇳";
+  if (tz.includes("dubai") || tz.includes("uae")) return "🇦🇪";
+  if (tz.includes("riyadh") || tz.includes("saudi")) return "🇸🇦";
+  if (tz.includes("london") || tz.includes("gmt")) return "🇬🇧";
+  if (tz.includes("new_york") || tz.includes("america")) return "🇺🇸";
+  if (tz.includes("sydney") || tz.includes("australia")) return "🇦🇺";
+
+  // Default
+  return "🌍";
+}

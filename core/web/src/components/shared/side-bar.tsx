@@ -14,9 +14,15 @@ import { Link, useLocation, useParams } from "react-router";
 import { useGetAllServers } from "../../features/servers/queries";
 import { toast } from "sonner";
 import type { ServerInfo } from "../../types/server";
-import { getOSConfig, iconMap, sessionOSConfig } from "../../lib/data";
+import {
+  getFlagByTimezone,
+  getOSConfig,
+  iconMap,
+  SESSION_STATUS_DOT,
+  sessionOSConfig,
+} from "../../lib/data";
 import { useGetSessionsForServer } from "../../features/session/queries";
-import type { Session } from "../../types/session";
+import type { BriefSession } from "../../types/session";
 import { Skeleton } from "../ui/skeleton";
 
 const navItems = [
@@ -34,17 +40,6 @@ function ServerAgents({
   serverName: string;
   isCollapsed: boolean;
 }) {
-  /*
-  {
-      "connectedTo": "api",
-      "id": 1,
-      "idleSeconds": 84,
-      "protocol": "TCP",
-      "remoteAddress": "127.0.0.1:37760",
-      "status": "Connected",
-      "uptimeSeconds": 84
-  }
-  */
   const { data: agents = [], isLoading } = useGetSessionsForServer(serverName);
   const { agentId: selectedAgentId } = useParams();
 
@@ -76,32 +71,48 @@ function ServerAgents({
 
   return (
     <div className="ml-3 mt-0.5 space-y-0.5 border-l border-sidebar-border pl-2.5">
-      {agents.map((agent: Session) => {
-        const osConfig = sessionOSConfig["Arch"] || sessionOSConfig.Unknown;
+      {agents.map((agent: BriefSession) => {
+        const osConfig = sessionOSConfig[agent.os] || sessionOSConfig.Unknown;
+        const flag = getFlagByTimezone(agent.timezone);
+        const status = SESSION_STATUS_DOT[agent.status];
         return (
           <Link
             key={agent.id}
             to={`/agent/${agent.connectedTo}/${agent.id}`}
             className={cn(
-              "flex items-center gap-2 px-2 py-1 font-mono text-[11px] transition-all",
+              "flex items-center gap-3 px-2 py-1 font-mono text-[11px] transition-all ",
               selectedAgentId === String(agent.id)
                 ? "bg-primary/10 text-primary"
                 : "text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
             )}
           >
-            <span className="text-base shrink-0" title={osConfig.label}>
+            <span className="text-xl shrink-0" title={osConfig.label}>
               {osConfig.emoji}
             </span>
-            <span className="h-1.5 w-1.5 shrink-0 rounded-full status-online" />
-            {/*<span className="truncate">
-              {agent.username}@{agent.host}
-            </span>
-            <span className="ml-auto flex items-center gap-1.5 text-[9px] text-muted-foreground">
-              {agent.country && <span>{agent.country}</span>}
-              {!agent.country && agent.primaryIP && (
-                <span>{agent.primaryIP.slice(0, 8)}</span>
+
+            <span className={cn("h-2 w-2 rounded-full", status)} />
+
+            {/* Main Info */}
+            <div className="flex-1 min-w-0">
+              <div className="truncate font-medium">
+                {agent.username}@{agent.hostname}
+              </div>
+              <div className="text-[10px] text-muted-foreground truncate">
+                {agent.remoteAddress.split(":")[0]} • {agent.os}
+              </div>
+            </div>
+
+            {/* Right Side Info + Bigger Flag */}
+            <div className="flex flex-col items-end gap-0.5">
+              <span className="text-sm" title={agent.timezone}>
+                {flag}
+              </span>
+              {agent.idleSeconds !== undefined && (
+                <span className="text-[9px] text-muted-foreground font-mono">
+                  {agent.idleSeconds}s idle
+                </span>
               )}
-            </span>*/}
+            </div>
           </Link>
         );
       })}

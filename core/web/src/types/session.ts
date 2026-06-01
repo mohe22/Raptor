@@ -1,3 +1,4 @@
+import type { OSKey } from "../lib/data";
 import type { ServerType } from "./server";
 
 export type SessionStatus =
@@ -6,12 +7,15 @@ export type SessionStatus =
   | "Disconnected"
   | "Disconnecting";
 
-export interface Session {
+export interface BriefSession {
   id: string;
   protocol: ServerType;
   status: SessionStatus;
   idleSeconds: number;
-  uptimeSeconds: number;
   remoteAddress: string;
   connectedTo: string;
+  os: OSKey;
+  username: string;
+  hostname: string;
+  timezone: string;
 }
