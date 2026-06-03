@@ -2,6 +2,7 @@ import { Navigate, Outlet } from "react-router";
 import { useAuth } from "../../providers/auth-context";
 import { Spinner } from "../ui/spinner";
 import Sidebar from "../shared/side-bar";
+import { SocketProvider } from "../../providers/socket-provider";
 export function ProtectedRoute() {
   const { userId, isLoading } = useAuth();
   if (isLoading) {
@@ -15,13 +16,13 @@ export function ProtectedRoute() {
   if (!userId) return <Navigate to="/login" replace />;
 
   return (
-    // <SocketProvider>
-    <div className="flex">
-      <Sidebar />
-      <main className="flex flex-1 flex-col overflow-hidden">
-        <Outlet />
-      </main>
-    </div>
-    // </SocketProvider>
+    <SocketProvider>
+      <div className="flex">
+        <Sidebar />
+        <main className="flex flex-1 flex-col overflow-hidden">
+          <Outlet />
+        </main>
+      </div>
+    </SocketProvider>
   );
 }

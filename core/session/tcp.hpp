@@ -82,7 +82,6 @@ namespace Raptor::Core::Session {
         void onCommand(const Common::Header& h, std::string_view body) noexcept override{};
         void onUpload(const Common::Header& h, std::string_view body) noexcept override {};
         void onDownload(const Common::Header& h, std::string_view body) noexcept override {};
-
         void onRegister(const Common::Header& h, std::string_view body) noexcept override {
             auto result = Common::Register::deserialize(
                 std::span<const uint8_t>(
@@ -98,6 +97,8 @@ namespace Raptor::Core::Session {
 
             h.print();
             printRegister(*result);
+            setRegistrationInfo(*result);
+
 
         }
         private:

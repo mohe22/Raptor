@@ -4,9 +4,9 @@
 #include "core/config.hpp"
 #include "libs/net/include/address.hpp"
 #include <cstdint>
-#include <print>
 #include <shared_mutex>
 #include <mutex>
+#include <sys/types.h>
 #include <unordered_map>
 #include "type.hpp"
 #include "utils.hpp"
@@ -19,15 +19,18 @@ namespace Raptor::Core::Server {
      *
      * Gets populated from Session::Base
      */
-    struct SessionInfo {
-        uint64_t                  id;             ///< Unique session id.
+    struct BriefSessionInfo {
+        uint64_t id;  ///< Unique session id.
         Common::Types::ServerType protocol;       ///< Protocol type (TCP, UDP, etc.).
-        Session::Status           status;         ///< Current lifecycle status.
+        Session::Status status;         ///< Current lifecycle status.
         uint64_t  idleSeconds;    ///< Seconds since last received data.
-        uint64_t  uptimeSeconds;  ///< Seconds since session was created.
         std::string remoteAddress;  ///< Remote ip:port as a human-readable string.
+        std::string hostname; ///< agent hostname;
+        std::string username; //< agent username;
+        std::string os; ///< the agent operating sys
+        std::string timezone; //< agent time zone
     };
-    using SessionsInfoList = std::vector<SessionInfo>;
+    using SessionsInfoList = std::vector<BriefSessionInfo>;
 
 
 
@@ -239,16 +242,20 @@ namespace Raptor::Core::Server {
             std::shared_lock lock(mutex_);
             SessionsInfoList data;
             data.reserve(sessions_.size());
-
             for (const auto& [id, session] : sessions_) {
+                const auto&  regInfo = session->getRegistrationInfo();
                 data.emplace_back(
-                    SessionInfo{
+                    BriefSessionInfo{
                         id,
                         session->type(),
                         session->status(),
                         session->idleSeconds(),
-                        session->uptimeSeconds(),
-                        session->getAddressStr()
+                        session->getAddressStr(),
+                        regInfo.username,
+                        regInfo.username,
+                        regInfo.os,
+                        regInfo.timezone
+
                     });
             };
             return data;

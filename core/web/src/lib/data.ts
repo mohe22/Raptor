@@ -1,16 +1,22 @@
 import {
   Activity,
+  AlertTriangle,
+  Bug,
   Clock,
   Cpu,
   FileText,
   Folder,
   Globe,
   HardDrive,
+  Info,
   Radio,
   Server,
   Shield,
+  Skull,
   Wifi,
+  XCircle,
 } from "lucide-react";
+import type { ServerType } from "../types/server";
 
 export const SESSION_STATUS_DOT: Record<string, string> = {
   Connected: "status-online animate-pulse",
@@ -264,3 +270,30 @@ export function getFlagByTimezone(timezone) {
   // Default
   return "🌍";
 }
+
+export const serverTypeConfig: Record<
+  ServerType,
+  { label: string; color: string; icon: string }
+> = {
+  HTTP: { label: "HTTP", color: "text-chart-1", icon: "globe" },
+  TCP: { label: "TCP", color: "text-chart-3", icon: "radio" },
+  DNS: { label: "DNS", color: "text-chart-5", icon: "server" },
+  UDP: { label: "UDP", color: "text-chart-2", icon: "shield" },
+};
+export const logLevelColor = {
+  Debug: "text-slate-400",
+  Info: "text-blue-400",
+  Warn: "text-yellow-400",
+  Error: "text-red-400",
+  Fatal: "text-red-600",
+  Unknown: "text-muted-foreground",
+} as const;
+
+export const logLevelIcon = {
+  Debug: Bug,
+  Info: Info,
+  Warn: AlertTriangle,
+  Error: XCircle,
+  Fatal: Skull,
+  Unknown: Info,
+} as const;

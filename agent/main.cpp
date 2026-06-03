@@ -11,6 +11,8 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <fstream>
+#include <chrono>
+#include<thread>
 #include <string>
 #include <print>
 
@@ -351,6 +353,8 @@ int main() {
 
     std::println("Register packet sent ({} bytes)", payload.size());
 
-    // std::this_thread::sleep_for(std::chrono::seconds(5));
-    // close(fd);
+    std::this_thread::sleep_for(std::chrono::seconds(120));
+
+
+    close(fd);
 }

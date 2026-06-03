@@ -1,6 +1,8 @@
 #include "session.hpp"
 #include "core/context.hpp"
-#include <print>
+#include <json/value.h>
+
+
 
 void Sessions::getSessionForServer(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback, const std::string& serverName) {
     try {
@@ -25,9 +27,12 @@ void Sessions::getSessionForServer(const HttpRequestPtr& req, std::function<void
             item["protocol"]      = Raptor::Common::Types::ToString(s.protocol);
             item["status"]        = Raptor::Core::Session::ToString(s.status);
             item["idleSeconds"]   = static_cast<Json::UInt64>(s.idleSeconds);
-            item["uptimeSeconds"] = static_cast<Json::UInt64>(s.uptimeSeconds);
             item["remoteAddress"] = s.remoteAddress;
             item["connectedTo"] = serverName;
+            item["os"] = s.os;
+            item["hostname"] = s.hostname;
+            item["username"] = s.username;
+            item["timezone"] = s.timezone;
             json.append(std::move(item));
         }
 

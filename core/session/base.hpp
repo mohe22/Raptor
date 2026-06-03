@@ -120,6 +120,10 @@ namespace Raptor::Core::Session {
          */
         void setStatus(Status s) noexcept { status_ = s; }
 
+        const void setRegistrationInfo(const Common::Register& r) noexcept {
+               information = r;
+            }
+
         /** @brief Returns true if the session is actively connected. */
         bool isConnected()     const noexcept { return status_ == Status::Connected;     }
 
@@ -204,8 +208,10 @@ namespace Raptor::Core::Session {
         bool hasPendingWrites() const noexcept {
             return !sendQueue_.empty();
         }
-
-    private:
+        const Common::Register& getRegistrationInfo() const noexcept {
+            return information;
+        }
+        private:
         uint64_t                      id_;
         Common::Types::ServerType     type_;
         Status                        status_;

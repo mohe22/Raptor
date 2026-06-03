@@ -1,6 +1,8 @@
+import type { ServerLog } from "./logs";
+
 export type IpType = "IPv4" | "IPv6" | "domain";
 export type Status = "running" | "paused" | "error" | "stopped";
-export type ServerType = "TCP" | "UDP" | "HTTP";
+export type ServerType = "TCP" | "UDP" | "HTTP" | "DNS";
 
 export interface Config {
   ip: string;
@@ -21,3 +23,26 @@ export interface ServerInfo {
 }
 
 export type getAllServersResponse = ServerInfo[];
+export interface ServerEntry {
+  name: string;
+  ipAddress: string;
+  port: number;
+  type: ServerType;
+  status: Status;
+  sessionCount: number;
+  bytesSent: number;
+  bytesReceived: number;
+  startTime: number; // seconds
+}
+
+export interface ServerPoolStatus {
+  runningServerCount: number;
+  totalServerCount: number;
+  totalSessionCount: number;
+  activeSessionCount: number;
+  totalBytesReceived: number;
+  totalBytesSent: number;
+  servers: ServerEntry[];
+
+  serversLogs: ServerLog[];
+}

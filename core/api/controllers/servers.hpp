@@ -21,7 +21,12 @@ class Server : public drogon::HttpController<Server>
                "/stop/{1}",
                Post,
                "AuthFilter");
+    METHOD_ADD(Server::getPoolStatus,
+                  "/pool-status",
+                  Get);
     METHOD_LIST_END
+    void getPoolStatus(const HttpRequestPtr& req,
+                      std::function<void(const HttpResponsePtr&)>&& callback);
     void getServers(const HttpRequestPtr& req,
                     std::function<void(const HttpResponsePtr&)>&& callback);
     void pauseServer(const HttpRequestPtr& req,

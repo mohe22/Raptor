@@ -2,7 +2,70 @@
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
+/* Listeners — pulsing radio ring */
+@keyframes pulse-ring {
+    0% {
+        transform: scale(0.8);
+        opacity: 1;
+    }
+    70% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+    100% {
+        transform: scale(1.4);
+        opacity: 0;
+    }
+}
+@keyframes pulse-icon {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.15);
+    }
+}
 
+/* Sessions — gentle bounce */
+@keyframes bounce-users {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    40% {
+        transform: translateY(-4px);
+    }
+    60% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Traffic In — slides in diagonally */
+@keyframes arrow-in {
+    0%,
+    100% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-3px, 3px);
+        opacity: 0.5;
+    }
+}
+
+/* Traffic Out — slides out diagonally */
+@keyframes arrow-out {
+    0%,
+    100% {
+        transform: translate(0, 0);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(3px, -3px);
+        opacity: 0.5;
+    }
+}
 :root {
     --background: oklch(0.09 0.005 240);
     --foreground: oklch(0.93 0.01 120);

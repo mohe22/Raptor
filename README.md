@@ -24,4 +24,4 @@ cmake -S . -B build/debug -DCMAKE_BUILD_TYPE=Debug
 ```bash
 cmake --build build/debug -j$(nproc)
 ```
-this binary in /build/debug/raptor
+the binary in /build/debug/raptor
