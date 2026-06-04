@@ -13,13 +13,9 @@ import { cn, formatBytes, formatUptime } from "./lib/utils";
 import { Link } from "react-router";
 import type { ServerEntry } from "./types/server";
 import { Skeleton } from "./components/ui/skeleton";
-import {
-  iconMap,
-  logLevelColor,
-  logLevelIcon,
-  serverTypeConfig,
-} from "./lib/data";
-import type { ServerLog } from "./types/logs";
+import { iconMap, serverTypeConfig } from "./lib/data";
+import { LogRow } from "./components/shared/log-row";
+
 function StatCardsSkeleton() {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
@@ -210,57 +206,7 @@ function ServerCard({ server }: { server: ServerEntry }) {
     </Link>
   );
 }
-function ServerLogRow({ log }: { log: ServerLog }) {
-  const Icon = logLevelIcon[log.level];
 
-  let meta: unknown = null;
-
-  try {
-    meta = JSON.parse(log.meta);
-  } catch {
-    meta = null;
-  }
-
-  return (
-    <div className="px-4 py-3 hover:bg-secondary/30 transition-colors">
-      <div className="flex gap-3">
-        <Icon
-          className={cn("h-4 w-4 mt-0.5 shrink-0", logLevelColor[log.level])}
-        />
-
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span
-              className={cn("text-xs font-semibold", logLevelColor[log.level])}
-            >
-              {log.level}
-            </span>
-
-            <span className="px-1.5 py-0.5 text-[10px] rounded bg-secondary text-muted-foreground">
-              {log.category}
-            </span>
-
-            <span className="font-mono text-[10px] text-primary">
-              {log.event}
-            </span>
-          </div>
-
-          <div className="mt-1 text-sm text-foreground">{log.message}</div>
-
-          {meta && (
-            <pre className="mt-2 text-[10px] rounded bg-background p-2 overflow-x-auto text-muted-foreground">
-              {JSON.stringify(meta, null, 2)}
-            </pre>
-          )}
-        </div>
-
-        <div className="text-[10px] font-mono text-muted-foreground whitespace-nowrap">
-          {new Date(log.ts * 1000).toLocaleString()}
-        </div>
-      </div>
-    </div>
-  );
-}
 function App() {
   const { data, isLoading } = usePoolStatus();
   if (!data || isLoading) return <DashboardSkeleton />;
@@ -404,14 +350,17 @@ function App() {
         <div className="mt-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Servers Logs
+              Server Logs
             </h2>
+            <span className="text-[10px] text-muted-foreground font-mono">
+              {data.serversLogs.length} entries
+            </span>
           </div>
           <Card className="bg-card border-border">
             <CardContent className="p-0">
-              <div className="divide-y divide-border">
-                {data.serversLogs.map((log) => (
-                  <ServerLogRow key={log.id} log={log} />
+              <div className="h-80 overflow-y-auto divide-y divide-border scroll-smooth">
+                {[...data.serversLogs].reverse().map((log) => (
+                  <LogRow key={log.id} log={log} />
                 ))}
               </div>
             </CardContent>

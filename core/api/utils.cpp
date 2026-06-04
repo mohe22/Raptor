@@ -192,7 +192,7 @@ namespace Raptor::Core::Api::Utils {
              item["id"]      = ent.id;
              item["ts"]      = static_cast<Json::UInt64>(ent.ts);
              item["level"]   = Db::toString(ent.level);
-             item["cat"]     = Db::toString(ent.category);
+             item["category"]     = Db::toString(ent.category);
              item["event"]   = ent.event;
              item["message"] = ent.message;
              item["meta"]    = ent.meta;

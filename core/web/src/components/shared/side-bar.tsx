@@ -119,6 +119,7 @@ function ServerAgents({
     </div>
   );
 }
+
 const Sidebar: React.FC = () => {
   const location = useLocation();
   const pathname = location.pathname;
@@ -126,7 +127,9 @@ const Sidebar: React.FC = () => {
   const [expandedServerId, setExpandedServerId] = useState<string | null>(null);
 
   const { data, error } = useGetAllServers();
+
   const servers: ServerInfo[] = data ?? [];
+
   useEffect(() => {
     if (error) {
       toast.error("Failed to fetch servers", {

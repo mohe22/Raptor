@@ -16,7 +16,7 @@ namespace Raptor::Core::Api {
     template <typename T>
     struct WsRequest {
        WsCmd command;
-        T           payload; // command-specific body; may be an empty object
+        T  payload; // command-specific body; may be an empty object
     };
 
     // Whether the server completed the command successfully.

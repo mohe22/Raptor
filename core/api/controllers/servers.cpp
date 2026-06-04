@@ -10,7 +10,7 @@ void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const H
 
         Raptor::Core::Db::Result<std::vector<Raptor::Core::Db::LogEntry>> entries = logs.get({
             .category = Raptor::Core::Db::LogCategory::Server,
-            .limit = 30
+            .limit = 10
         });
 
         if (!entries.has_value())
