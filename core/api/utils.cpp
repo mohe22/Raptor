@@ -1,8 +1,6 @@
+
+
 #include "core/api/utils.hpp"
-#include "core/db/logRepository.hpp"
-#include "register.hpp"
-#include <json/config.h>
-#include <json/value.h>
 
 namespace Raptor::Core::Api::Utils {
      std::string base64UrlEncode(const unsigned char* data, size_t len) noexcept {
@@ -97,7 +95,12 @@ namespace Raptor::Core::Api::Utils {
         outUserId = payload["sub"].asString();
         return true;
     }
-
+     Net::IPType detectIpType(const std::string& ip) noexcept {
+        struct sockaddr_in6 sa6{};
+        if (inet_pton(AF_INET6, ip.c_str(), &sa6.sin6_addr) == 1)
+            return Net::IPType::IPv6;
+        return Net::IPType::IPv4;
+    }
 
     Json::Value ToIdentityJson(const Common::Register& reg) noexcept
      {

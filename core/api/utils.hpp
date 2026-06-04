@@ -5,13 +5,14 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <json/json.h>
-
+#include "libs/net/include/types.hpp"
 namespace Raptor::Core::Api::Utils {
     std::string base64UrlEncode(const unsigned char* data, size_t len) noexcept;
     std::string base64UrlDecode(const std::string& in) noexcept;
     std::string hmacSha256Base64Url(const std::string& data, const std::string& secret) noexcept;
     std::string buildJwt(const std::string& subject, const std::string& issuer,const std::string& secret)  noexcept;
     bool verifyJwt(const std::string& token,const std::string& secret, const std::string& issuer,std::string& outUserId) noexcept;
+    Net::IPType detectIpType(const std::string& ip) noexcept;
 
     Json::Value ToIdentityJson(const Common::Register& reg) noexcept;
     Json::Value ToSystemJson(const Common::Register& reg) noexcept;

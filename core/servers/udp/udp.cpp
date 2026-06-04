@@ -54,14 +54,13 @@ namespace Raptor::Core::Servers {
                     break;
                 }
                 auto& [recvBytes, sender] = result.value();
-                // if (recvBytes > 0)
-                // addRxBytes(recvBytes);
+                if (recvBytes > 0)
+                    addRxBytes(recvBytes);
                 std::println("{}", sender.getIp().value());
                 Session::UdpSession* peer = sessionManager.getOrCreate<Session::UdpSession>(sender);
                 size_t replySize = callbacks_.datagram(bufTmp, recvBytes, peer, server_);
-                // if (replySize > 0)
-                // addTxBytes(replySize);
-                // processDatagram(bufTmp, recvBytes, sender);
+                if (replySize > 0)
+                    addTxBytes(replySize);
             }
         });
 

@@ -14,7 +14,12 @@ namespace Raptor::Common::Types{
             default:  return "Unknown";
         }
     }
-
+    inline std::optional<ServerType> FromString(const std::string& s) noexcept {
+        if (s == "TCP")  return ServerType::TCP;
+        if (s == "UDP")  return ServerType::UDP;
+        if (s == "HTTP") return ServerType::HTTP;
+        return std::nullopt;
+    }
 
 
 

@@ -1,5 +1,6 @@
 import { api } from "../../lib/api";
 import type {
+  CreateServerPayload,
   getAllServersResponse,
   ServerPoolStatus,
 } from "../../types/server";
@@ -19,3 +20,9 @@ export const resumeServer = async (name: string) =>
 
 export const stopServer = async (name: string) =>
   await api(`/server/stop/${name}`, { method: "POST" });
+
+export const createServer = async (payload: CreateServerPayload) =>
+  await api<{ success: boolean; message: string }>("/server/create", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });

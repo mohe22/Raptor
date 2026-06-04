@@ -1,12 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  createServer,
   getAllServers,
   pauseServer,
   poolStatus,
   resumeServer,
   stopServer,
 } from "./api";
-import type { ServerInfo, ServerPoolStatus } from "../../types/server";
+import type {
+  CreateServerPayload,
+  ServerInfo,
+  ServerPoolStatus,
+} from "../../types/server";
 
 export const SERVER_QUERY_KEYS = {
   all: ["servers"] as const,
@@ -107,6 +112,41 @@ export const useStopServer = () => {
               ? old.runningServerCount - 1
               : old.runningServerCount,
             servers: old.servers.filter((s) => s.name !== name),
+          };
+        },
+      );
+    },
+  });
+};
+
+export const useCreateServer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateServerPayload) => createServer(payload),
+    onSuccess: (_, payload) => {
+      // Invalidate rather than optimistically patch  we don't have the full
+      // ServerInfo shape (uptimeSeconds, rxBytes, etc.) client-side yet.
+      qc.invalidateQueries({ queryKey: SERVER_QUERY_KEYS.all });
+      qc.setQueryData(
+        SERVER_QUERY_KEYS.poolStatus,
+        (old: ServerPoolStatus | undefined) => {
+          if (!old) return old;
+          const newEntry = {
+            name: payload.name,
+            ipAddress: payload.ip,
+            port: payload.port,
+            type: payload.type,
+            status: "running" as const,
+            sessionCount: 0,
+            bytesSent: 0,
+            bytesReceived: 0,
+            startTime: 0,
+          };
+          return {
+            ...old,
+            totalServerCount: old.totalServerCount + 1,
+            runningServerCount: old.runningServerCount + 1,
+            servers: [...old.servers, newEntry],
           };
         },
       );

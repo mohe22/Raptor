@@ -2,8 +2,13 @@ import type { log } from "./logs";
 
 export type IpType = "IPv4" | "IPv6" | "domain";
 export type Status = "running" | "paused" | "error" | "stopped";
-export type ServerType = "TCP" | "UDP" | "HTTP" | "DNS";
-
+export type ServerType = "TCP" | "UDP" | "HTTP" | "HTTPS" | "DNS";
+export interface CreateServerPayload {
+  name: string;
+  ip: string;
+  port: number;
+  type: ServerType;
+}
 export interface Config {
   ip: string;
   port: number;

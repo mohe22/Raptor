@@ -1,6 +1,7 @@
 #include "servers.hpp"
 #include "core/api/utils.hpp"
 #include "core/context.hpp"
+#include "type.hpp"
 
 void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
     try {
@@ -232,6 +233,105 @@ void Server::stopServer(const HttpRequestPtr& req,std::function<void(const HttpR
         auto resp = drogon::HttpResponse::newHttpJsonResponse(errorJson);
         resp->setStatusCode(drogon::k500InternalServerError);
 
+        callback(resp);
+    }
+
+}
+
+void Server::createServer(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
+    try {
+        auto body = req->getJsonObject();
+        if (!body) {
+            Json::Value err;
+            err["error"] = "invalid or missing JSON body";
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k400BadRequest);
+            return callback(resp);
+        }
+
+        if (!body->isMember("name") || !body->isMember("port") ||
+            !body->isMember("ip")   || !body->isMember("type")) {
+            Json::Value err;
+            err["error"] = "missing required fields: name, port, ip, type";
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k400BadRequest);
+            return callback(resp);
+        }
+
+        const std::string name    = (*body)["name"].asString();
+        const std::string ip      = (*body)["ip"].asString();
+        const std::string typeStr = (*body)["type"].asString();
+        const int portNum = (*body)["port"].asInt();
+
+        if (name.empty() || name.size() > 50) {
+            Json::Value err;
+            err["error"] = "name: required, max 50 chars";
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k400BadRequest);
+            return callback(resp);
+        }
+
+        if (portNum < 1 || portNum > 65535) {
+            Json::Value err;
+            err["error"] = "port: must be between 1 and 65535";
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k400BadRequest);
+            return callback(resp);
+        }
+
+        const auto serverType = Raptor::Common::Types::FromString(typeStr);
+        if (!serverType) {
+            Json::Value err;
+            err["error"] = "type: must be TCP, UDP, or HTTP";
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k400BadRequest);
+            return callback(resp);
+        }
+
+        auto& servers = Raptor::Core::Context::get().servers();
+
+        if (servers.hasServer(name)) {
+            Json::Value err;
+            err["error"] = std::format("server '{}' already exists", name);
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k409Conflict);
+            return callback(resp);
+        }
+
+        Raptor::Core::Servers::ServerConfig config;
+        config.instanceName = name;
+        config.port         = static_cast<uint16_t>(portNum);
+        config.ipType       = Raptor::Core::Api::Utils::detectIpType(ip);
+        config.epollTimeout = 2000;
+        strncpy(config.ip, ip.c_str(), sizeof(config.ip) - 1);
+        config.ip[sizeof(config.ip) - 1] = '\0';
+
+        const bool ok = servers.createServer(serverType.value(), config);
+
+        Json::Value json;
+        json["success"] = ok;
+        if (!ok) {
+            json["error"] = "failed to create server, name may already exist or config is invalid";
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(json);
+            resp->setStatusCode(drogon::k409Conflict);
+            return callback(resp);
+        }
+
+        json["message"] = std::format("server '{}' created", config.instanceName);
+        callback(drogon::HttpResponse::newHttpJsonResponse(json));
+    }
+    catch (const std::exception& e) {
+        Json::Value err;
+        err["error"] = e.what();
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+        resp->setStatusCode(drogon::k500InternalServerError);
+        callback(resp);
+    }
+    catch (...) {
+        Json::Value err;
+        err["error"] = "unknown server error";
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+        resp->setStatusCode(drogon::k500InternalServerError);
         callback(resp);
     }
 }
