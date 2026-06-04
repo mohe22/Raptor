@@ -107,7 +107,7 @@ export function ServerCard({ server }: { server: ServerInfo }) {
 
           <Popover>
             <PopoverTrigger>
-              <Button size="icon-xs" variant="ghost" className="cursor-pointer">
+              <Button size="icon-sm" className="cursor-pointer">
                 <MoreVertical className="size-3.5" />
               </Button>
             </PopoverTrigger>

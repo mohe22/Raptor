@@ -17,6 +17,7 @@ import type { ServerInfo } from "../../types/server";
 import {
   getFlagByTimezone,
   iconMap,
+  SERVER_STATUS_DOT,
   serverTypeConfig,
   SESSION_STATUS_DOT,
   sessionOSConfig,
@@ -272,11 +273,7 @@ const Sidebar: React.FC = () => {
                       <span
                         className={cn(
                           "h-1.5 w-1.5 shrink-0 rounded-full",
-                          server.status === "running"
-                            ? "status-online"
-                            : server.status === "error"
-                              ? "bg-destructive"
-                              : "status-offline",
+                          SERVER_STATUS_DOT[server.status],
                         )}
                       />
                       <span className="font-mono text-[10px] text-muted-foreground">
