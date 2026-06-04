@@ -1,6 +1,5 @@
 #pragma once
 #include "base.hpp"
-#include "core/session/base.hpp"
 #include "core/session/manager.hpp"
 #include "type.hpp"
 #include <cstdint>

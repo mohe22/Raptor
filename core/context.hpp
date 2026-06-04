@@ -1,7 +1,6 @@
 #pragma once
 #include <stdexcept>
 #include <string>
-#include "core/db/error.hpp"
 #include "core/db/logRepository.hpp"
 #include "core/servers/manager.hpp"
 #include "db/db.hpp"

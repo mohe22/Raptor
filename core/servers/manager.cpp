@@ -1,5 +1,4 @@
 #include "manager.hpp"
-#include <format>
 #include "core/context.hpp"
 #include "core/db/logRepository.hpp"
 #include "core/servers/tcp/tcp.hpp"

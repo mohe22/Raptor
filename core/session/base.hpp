@@ -1,7 +1,6 @@
 #pragma once
 
 #include "core/session/queue.hpp"
-#include "header.hpp"
 #include "libs/net/include/types.hpp"
 #include "register.hpp"
 #include "type.hpp"
@@ -94,12 +93,13 @@ namespace Raptor::Core::Session {
         virtual std::string
             getAddressStr() const noexcept = 0;
 
+
         /**
          * @brief Returns the unique session id.
          *
          * Assigned at construction and never changes.
          */
-        uint64_t id() const noexcept { return id_; }
+        const uint64_t& id() const noexcept { return id_; }
 
         /**
          * @brief Returns the protocol type of this session (TCP, UDP, etc.).
