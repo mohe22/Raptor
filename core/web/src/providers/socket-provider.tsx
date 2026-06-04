@@ -17,7 +17,7 @@ export function SocketProvider({
   const clientRef = useRef<RaptorWsClient | null>(null);
 
   const [client, setClient] = useState<RaptorWsClient | null>(null);
-
+  const [connected, setConnected] = useState(false);
   useEffect(() => {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let unmounted = false;
@@ -27,16 +27,18 @@ export function SocketProvider({
       clientRef.current = ws;
 
       ws.onOpen = () => {
-        if (!unmounted) setClient(ws);
+        if (!unmounted) {
+          setClient(ws);
+          setConnected(true);
+        }
       };
-
       ws.onClose = () => {
         if (!unmounted) {
           setClient(null);
+          setConnected(false);
           reconnectTimer = setTimeout(createClient, reconnectDelay);
         }
       };
-
       ws.onError = (e) => {
         console.error("[SocketProvider] WebSocket error:", e);
       };
@@ -60,6 +62,8 @@ export function SocketProvider({
   }, [reconnectDelay]);
 
   return (
-    <SocketContext.Provider value={client}>{children}</SocketContext.Provider>
+    <SocketContext.Provider value={{ client, connected }}>
+      {children}
+    </SocketContext.Provider>
   );
 }

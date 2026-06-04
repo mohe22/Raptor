@@ -1,4 +1,4 @@
-import type { ServerLog } from "./logs";
+import type { log } from "./logs";
 
 export type IpType = "IPv4" | "IPv6" | "domain";
 export type Status = "running" | "paused" | "error" | "stopped";
@@ -44,5 +44,6 @@ export interface ServerPoolStatus {
   totalBytesSent: number;
   servers: ServerEntry[];
 
-  serversLogs: ServerLog[];
+  serversLogs: log[];
+  sessionLogs: log[];
 }

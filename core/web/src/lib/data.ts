@@ -24,6 +24,12 @@ export const SESSION_STATUS_DOT: Record<string, string> = {
   Disconnecting: "status-error animate-pulse",
   Disconnected: "status-offline",
 };
+export const SERVER_STATUS_DOT: Record<string, string> = {
+  running: "status-online animate-pulse",
+  paused: "status-warning animate-pulse",
+  error: "status-error animate-pulse",
+  stopped: "status-offline",
+};
 export const iconMap: Record<
   string,
   React.ComponentType<{ className?: string }>
@@ -150,24 +156,6 @@ const OS_MATCH_RULES: Array<[pattern: string, key: OSKey]> = [
   ["osx", "macOS"],
   ["linux", "Linux"],
 ];
-
-/**
- * Returns the OSConfig for any OS string coming from the agent/server.
- * Performs case-insensitive substring matching so strings like
- * "Windows 11 Pro", "Ubuntu 22.04 LTS", "Windows Server 2022" all resolve
- * correctly without requiring an exact key match.
- */
-export function getOSConfig(os: string): OSConfig {
-  if (!os) return OS_CONFIGS.Unknown;
-
-  const lower = os.toLowerCase();
-
-  for (const [pattern, key] of OS_MATCH_RULES) {
-    if (lower.includes(pattern)) return OS_CONFIGS[key];
-  }
-
-  return OS_CONFIGS.Unknown;
-}
 
 export const sessionOSConfig: Record<OSKey, OSConfig> = OS_CONFIGS;
 

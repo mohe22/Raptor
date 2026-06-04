@@ -14,14 +14,14 @@ export const useGetAllServers = () =>
   useQuery({
     queryKey: SERVER_QUERY_KEYS.all,
     queryFn: getAllServers,
-    refetchInterval: REFRESH_INTERVAL_MS,
-    staleTime: REFRESH_INTERVAL_MS,
+    refetchInterval: REFRESH_INTERVAL_MAX_MS,
+    staleTime: REFRESH_INTERVAL_MAX_MS,
   });
 
 export const usePoolStatus = () =>
   useQuery({
     queryKey: SERVER_QUERY_KEYS.poolStatus,
     queryFn: poolStatus,
-    refetchInterval: REFRESH_INTERVAL_MAX_MS,
-    staleTime: REFRESH_INTERVAL_MAX_MS,
+    refetchInterval: REFRESH_INTERVAL_MS,
+    staleTime: REFRESH_INTERVAL_MS,
   });

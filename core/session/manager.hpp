@@ -9,6 +9,7 @@
 #include <atomic>
 #include <condition_variable>
 #include "type.hpp"
+#include "utils.hpp"
 
 namespace Raptor::Core::Server {
 
@@ -69,7 +70,16 @@ namespace Raptor::Core::Server {
          * @endcode
          */
         template<typename T>
-        T* add(std::unique_ptr<T> session);
+        T* add(std::unique_ptr<T> session) {
+            static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
+            T* raw = session.get();
+            {
+                std::unique_lock lock(mutex_);
+                sessions_.emplace(raw->id(), std::move(session));
+            }
+            onSessionCreated(raw->id(), raw->getAddressStr(), raw->type());
+            return raw;
+        }
 
         /**
          * @brief Returns an existing session matching the address or creates a new one.
@@ -82,7 +92,29 @@ namespace Raptor::Core::Server {
          * @return         Raw non-owning pointer, or nullptr if the address is invalid.
          */
         template<typename T>
-        T* getOrCreate(const Net::Address& address);
+        T* getOrCreate(const Net::Address& address) {
+            static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
+            auto ip   = address.getIp();
+            auto port = address.getPort();
+            // should never happen address is validated before reaching here
+            [[unlikely]] if (!ip || !port) {
+                onSessionCreateFailed();
+                return nullptr;
+            }
+            const std::string target = std::format("{}:{}", ip.value(), port.value());
+            T* raw = nullptr;
+            {
+                std::unique_lock lock(mutex_);
+                for (const auto& [sid, session] : sessions_)
+                    if (session->getAddressStr() == target)
+                        return static_cast<T*>(session.get());
+                auto session = std::make_unique<T>(std::move(address), Common::nextId());
+                raw = static_cast<T*>(session.get());
+                sessions_.emplace(session->id(), std::move(session));
+            }
+            onSessionCreated(raw->id(), target, raw->type());
+            return raw;
+        }
 
         /**
          * @brief Removes and destroys a session by id.
@@ -156,7 +188,11 @@ namespace Raptor::Core::Server {
          * @endcode
          */
         template<typename Fn>
-        void forEach(Fn&& fn) const;
+        void forEach(Fn&& fn) const {
+            std::shared_lock lock(mutex_);
+            for (const auto& [_, session] : sessions_)
+                fn(session.get());
+        }
 
         /**
          * @brief Iterates over sessions of a specific concrete type.
@@ -174,7 +210,13 @@ namespace Raptor::Core::Server {
          * @endcode
          */
         template<typename T, typename Fn>
-        void forEachOf(Fn&& fn) const;
+        void forEachOf(Fn&& fn) const {
+            static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
+            std::shared_lock lock(mutex_);
+            for (const auto& [id, session] : sessions_)
+                if (auto* ptr = dynamic_cast<T*>(session.get()))
+                    fn(ptr);
+        }
 
         /**
          * @brief Returns a snapshot of all sessions for API/UI reporting.

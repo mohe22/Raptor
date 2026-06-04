@@ -16,8 +16,8 @@ import { toast } from "sonner";
 import type { ServerInfo } from "../../types/server";
 import {
   getFlagByTimezone,
-  getOSConfig,
   iconMap,
+  serverTypeConfig,
   SESSION_STATUS_DOT,
   sessionOSConfig,
 } from "../../lib/data";
@@ -151,7 +151,7 @@ const Sidebar: React.FC = () => {
   return (
     <aside
       className={cn(
-        "flex h-screen relative group flex-col border-r border-border bg-sidebar transition-all duration-300",
+        "flex  group flex-col border-r border-border bg-sidebar transition-all duration-300 sticky top-0 h-screen",
         isCollapsed ? "w-16" : "w-32 md:w-72",
       )}
     >
@@ -241,7 +241,7 @@ const Sidebar: React.FC = () => {
 
           {servers.map((server) => {
             const isExpanded = expandedServerId === server.config.instanceName;
-            const typeConfig = getOSConfig(server.type);
+            const typeConfig = serverTypeConfig[server.type];
             const TypeIcon = iconMap[typeConfig?.icon || "server"] || Server;
 
             return (

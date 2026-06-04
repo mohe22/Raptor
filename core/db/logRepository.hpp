@@ -16,14 +16,12 @@ enum class LogLevel : int {
 enum class LogCategory : int {
     System  = 0,
     Server  = 1,
-    Agent   = 2,
     Session = 3
 };
 inline const char* toString(LogCategory c) {
     switch (c) {
         case LogCategory::System:  return "System";
         case LogCategory::Server:  return "Server";
-        case LogCategory::Agent:   return "Agent";
         case LogCategory::Session: return "Session";
         default:                   return "Unknown";
     }

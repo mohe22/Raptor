@@ -8,6 +8,7 @@ void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const H
         const auto& logs = Raptor::Core::Context::get().logs();
         const Raptor::Core::Servers::ServerPoolStatus pool = servers.getServerPoolStatus();
 
+
         Raptor::Core::Db::Result<std::vector<Raptor::Core::Db::LogEntry>> entries = logs.get({
             .category = Raptor::Core::Db::LogCategory::Server,
             .limit = 10
@@ -15,7 +16,12 @@ void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const H
 
         if (!entries.has_value())
             throw std::runtime_error(std::format("message: {},code:{}",entries.error().message,entries.error().code));
-
+        Raptor::Core::Db::Result<std::vector<Raptor::Core::Db::LogEntry>> sessionEntries = logs.get({
+               .category = Raptor::Core::Db::LogCategory::Session,
+               .limit = 10
+        });
+        if (!sessionEntries.has_value())
+            throw std::runtime_error(std::format("message: {},code:{}",entries.error().message,entries.error().code));
 
         Json::Value json;
         json["runningServerCount"]  = static_cast<Json::UInt64>(pool.runningServerCount);
@@ -25,6 +31,8 @@ void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const H
         json["totalBytesReceived"]  = static_cast<Json::UInt64>(pool.totalBytesReceived);
         json["totalBytesSent"]      = static_cast<Json::UInt64>(pool.totalBytesSent);
         json["serversLogs"] = Raptor::Core::Api::Utils::ToLogEntryJson(entries.value());
+        json["sessionLogs"] = Raptor::Core::Api::Utils::ToLogEntryJson(sessionEntries.value());
+
         Json::Value serversArray(Json::arrayValue);
         for (const auto& s : pool.servers) {
             Json::Value entry;

@@ -149,7 +149,7 @@ void SessionManager::monitorLoop() {
 }
 void SessionManager::onSessionCreated(const uint64_t id, const std::string& address, const Common::Types::ServerType type)  noexcept{
     Context::get().logs().info(Db::LogCategory::Session, "SESSION_CREATED",
-        std::format("id={} addr={} instance={}", id, address, Common::Types::ToString(type)));
+        std::format("id={} addr={} protocol={}", id, address, Common::Types::ToString(type)));
 }
 void SessionManager::onSessionCreateFailed() noexcept{
     Context::get().logs().warn(Db::LogCategory::Session, "SESSION_CREATE_FAILED", "invalid address");

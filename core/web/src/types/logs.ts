@@ -8,7 +8,7 @@ export type LogLevel =
 
 export type LogCategory = "System" | "Server" | "Agent" | "Session" | "Unknown";
 
-export interface ServerLog {
+export interface log {
   id: number;
   ts: number;
   level: LogLevel;

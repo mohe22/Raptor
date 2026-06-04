@@ -8,6 +8,7 @@ import { AuthLayout } from "./components/layout/auth-layout";
 import { ProtectedRoute } from "./components/layout/protected-layout";
 import { AuthProvider } from "./providers/auth-provider";
 import { Toaster } from "./components/ui/sonner";
+import { ServersPage } from "./pages/servers-page";
 
 const root = document.getElementById("root");
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ ReactDOM.createRoot(root).render(
           </Route>
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<App />} />
+            <Route path="/servers" element={<ServersPage />} />
           </Route>
         </Routes>
         <Toaster duration={5000} />

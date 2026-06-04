@@ -17,7 +17,7 @@ export function ProtectedRoute() {
 
   return (
     <SocketProvider>
-      <div className="flex">
+      <div className="flex h-screen overflow-hidden">
         <Sidebar />
         <main className="flex flex-1 flex-col overflow-hidden">
           <Outlet />

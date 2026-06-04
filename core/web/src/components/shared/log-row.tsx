@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { logLevelColor } from "../../lib/data";
-import type { ServerLog } from "../../types/logs";
+import type { log } from "../../types/logs";
 import { cn } from "../../lib/utils";
 import { ChevronDown } from "lucide-react";
 
-export function LogRow({ log }: { log: ServerLog }) {
+export function LogRow({ log }: { log: log }) {
   const color = logLevelColor[log.level];
   const [expanded, setExpanded] = useState(false);
 

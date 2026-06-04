@@ -210,7 +210,6 @@ function ServerCard({ server }: { server: ServerEntry }) {
 function App() {
   const { data, isLoading } = usePoolStatus();
   if (!data || isLoading) return <DashboardSkeleton />;
-  console.log(data);
 
   // todo the ICON animation run only if data updated.
   return (
@@ -336,13 +335,16 @@ function App() {
               Recent Session
             </h2>
             <span className="text-[10px] text-muted-foreground font-mono">
-              {data.totalSessionCount}
-              total
+              {data.totalSessionCount} total
             </span>
           </div>
           <Card className="bg-card border-border">
             <CardContent className="p-0">
-              <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4" />
+              <div className="h-80 overflow-y-auto divide-y divide-border scroll-smooth">
+                {[...data.sessionLogs].reverse().map((log) => (
+                  <LogRow key={log.id} log={log} />
+                ))}
+              </div>
             </CardContent>
           </Card>
         </div>
