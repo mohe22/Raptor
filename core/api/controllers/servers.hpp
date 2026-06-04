@@ -28,6 +28,10 @@ class Server : public drogon::HttpController<Server>
         "/create",
                Post,
                "AuthFilter");
+    METHOD_ADD(Server::updateServer,
+        "/update",
+               Post,
+               "AuthFilter");
     METHOD_LIST_END
     void getPoolStatus(const HttpRequestPtr& req,
                       std::function<void(const HttpResponsePtr&)>&& callback);
@@ -42,6 +46,8 @@ class Server : public drogon::HttpController<Server>
     void stopServer(const HttpRequestPtr& req,
                     std::function<void(const HttpResponsePtr&)>&& callback,
                     const std::string& serverName);
+    void updateServer(const HttpRequestPtr& req,
+                     std::function<void(const HttpResponsePtr&)>&& callback);
     void createServer(const HttpRequestPtr& req,
                      std::function<void(const HttpResponsePtr&)>&& callback);
 };

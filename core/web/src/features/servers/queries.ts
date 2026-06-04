@@ -11,7 +11,9 @@ import type {
   CreateServerPayload,
   ServerInfo,
   ServerPoolStatus,
+  UpdateServerPayload,
 } from "../../types/server";
+import { updateServer } from "../session/api";
 
 export const SERVER_QUERY_KEYS = {
   all: ["servers"] as const,
@@ -147,6 +149,54 @@ export const useCreateServer = () => {
             totalServerCount: old.totalServerCount + 1,
             runningServerCount: old.runningServerCount + 1,
             servers: [...old.servers, newEntry],
+          };
+        },
+      );
+    },
+  });
+};
+
+export const useUpdateServer = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: UpdateServerPayload) => updateServer(payload),
+    onSuccess: (_, payload) => {
+      // Patch all-servers list: update the matching entry by originalName
+      qc.setQueryData(SERVER_QUERY_KEYS.all, (old: ServerInfo[] = []) =>
+        old.map((s) =>
+          s.config.instanceName === payload.originalName
+            ? {
+                ...s,
+                config: {
+                  ...s.config,
+                  instanceName: payload.newName,
+                  ip: payload.ip,
+                  port: payload.port,
+                },
+              }
+            : s,
+        ),
+      );
+
+      // Patch pool status: update the matching server entry
+      qc.setQueryData(
+        SERVER_QUERY_KEYS.poolStatus,
+        (old: ServerPoolStatus | undefined) => {
+          if (!old) return old;
+          return {
+            ...old,
+            servers: old.servers.map((s) =>
+              s.name === payload.originalName
+                ? {
+                    ...s,
+                    name: payload.newName,
+                    ipAddress: payload.ip,
+                    port: payload.port,
+                    status: "running" as const, // server restarts on update
+                    sessionCount: 0, // sessions are dropped on restart
+                  }
+                : s,
+            ),
           };
         },
       );

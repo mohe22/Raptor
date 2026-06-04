@@ -384,6 +384,9 @@ namespace Raptor::Core::Servers {
         [[nodiscard]] ServerStatus status() const noexcept {
             return status_.load(std::memory_order_acquire);
         }
+        void updateInstanceName(const std::string& name) noexcept {
+            config_.instanceName = name;
+        }
 
         /**
             * @brief Waits for the worker thread to finish.

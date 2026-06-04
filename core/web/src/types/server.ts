@@ -9,6 +9,12 @@ export interface CreateServerPayload {
   port: number;
   type: ServerType;
 }
+export interface UpdateServerPayload {
+  originalName: string;
+  newName: string;
+  ip: string;
+  port: number;
+}
 export interface Config {
   ip: string;
   port: number;
@@ -28,6 +34,7 @@ export interface ServerInfo {
 }
 
 export type getAllServersResponse = ServerInfo[];
+
 export interface ServerEntry {
   name: string;
   ipAddress: string;
