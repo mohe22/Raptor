@@ -4,6 +4,7 @@
 #include "libs/net/include/types.hpp"
 #include "register.hpp"
 #include "type.hpp"
+#include <string>
 
 namespace Raptor::Core::Session {
 
@@ -51,12 +52,13 @@ namespace Raptor::Core::Session {
          * @param id    Unique session id from Common::nextId().
          * @param type  Protocol type (TCP, UDP, etc.).
          */
-        Base(const uint64_t id, Common::Types::ServerType type)
+        Base(const uint64_t id, Common::Types::ServerType type,const std::string& conn)
             : id_(id)
             , type_(type)
             , status_(Status::Connected)
             , connectedAt_(Common::Types::Clock::now())
             , lastActive_(Common::Types::Clock::now())
+            , connectedTo_(conn)
         {}
 
         /**
@@ -198,7 +200,9 @@ namespace Raptor::Core::Session {
                 uptimeSeconds()
             );
         }
-
+        const std::string& connectedTo() const noexcept {
+            return connectedTo_;
+        }
         /**
          * @brief Returns true if there is unsent data waiting in the send queue.
          *
@@ -214,11 +218,12 @@ namespace Raptor::Core::Session {
         private:
         uint64_t                      id_;
         Common::Types::ServerType     type_;
-        Status                        status_;
+        Status   status_;
         Common::Types::TimePoint      connectedAt_;  ///< Set once at construction, never changes.
         Common::Types::TimePoint      lastActive_;   ///< Updated on every successful read via touch().
         Queue::SendQueue<std::string> sendQueue_;
         Common::Register information;
+        std::string connectedTo_;
     };
 
 } // namespace Raptor::Core::Session

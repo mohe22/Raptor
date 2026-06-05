@@ -75,8 +75,7 @@ export function UpdateServerForm({ config }: UpdateServerFormProps) {
   function handleFormSubmit(values: UpdateServerFormValues) {
     mutate(
       {
-        originalName: config.instanceName,
-        newName: values.name,
+        name: values.name,
         ip: values.ip,
         port: Number(values.port),
       },
@@ -103,6 +102,7 @@ export function UpdateServerForm({ config }: UpdateServerFormProps) {
             </FieldLabel>
 
             <Input
+              disabled={true}
               id="name"
               type="text"
               placeholder="Primary Server"

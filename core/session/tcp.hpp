@@ -52,8 +52,8 @@ namespace Raptor::Core::Session {
     public Common::Parsers::TcpParser<uint8_t,Config::RECV_BUFFER_SIZE>
     {
         public:
-        TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id)
-        : Base(id, Common::Types::ServerType::TCP), connection_(std::move(conn)){
+        TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id,const std::string& connectedTo)
+        : Base(id, Common::Types::ServerType::TCP,connectedTo), connection_(std::move(conn)){
             fd = connection_->getSocket();
         }
         ~TcpSession() noexcept {

@@ -72,6 +72,86 @@ void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const H
     }
 }
 
+
+
+void Server::getServerById(const HttpRequestPtr& req,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& id){
+    try {
+        auto& servers = Raptor::Core::Context::get().servers();
+        auto& logs    = Raptor::Core::Context::get().logs();
+
+        auto info = servers.getServerInfo(id);
+        if (!info) {
+            Json::Value err;
+            err["error"] = std::format("server '{}' not found", id);
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k404NotFound);
+            return callback(resp);
+        }
+
+        auto serverLogs  = logs.get({ .category = Raptor::Core::Db::LogCategory::Server,  .serverId = id, .limit = 50 });
+
+        if (!serverLogs) {
+            Json::Value err;
+            err["error"] = std::format("failed to fetch server logs: {}", serverLogs.error().message);
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k500InternalServerError);
+            return callback(resp);
+        }
+        auto sessionLogs = logs.get({ .category = Raptor::Core::Db::LogCategory::Session, .serverId = id, .limit = 50 });
+        if (!sessionLogs) {
+            Json::Value err;
+            err["error"] = std::format("failed to fetch session logs: {}", sessionLogs.error().message);
+            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+            resp->setStatusCode(drogon::k500InternalServerError);
+            return callback(resp);
+        }
+
+
+
+        Json::Value json;
+
+        Json::Value config;
+        config["ip"]           = info->config.ip;
+        config["port"]         = info->config.port;
+        config["ipType"]       = (info->config.ipType == Net::IPType::IPv4) ? "IPv4" : "IPv6";
+        config["timeout"]      = info->config.epollTimeout;
+        config["instanceName"] = info->config.instanceName;
+
+        json["config"]         = std::move(config);
+        json["type"]           = Raptor::Common::Types::ToString(info->type);
+        json["status"]         = Raptor::Core::Servers::ToString(info->status);
+        json["error"]          = info->error;
+        json["sessionCounter"] = static_cast<Json::UInt64>(info->sessionCounter);
+        json["uptimeSeconds"]  = static_cast<Json::UInt64>(info->uptimeSeconds);
+        json["rxBytes"]        = static_cast<Json::UInt64>(info->rxBytes);
+        json["txBytes"]        = static_cast<Json::UInt64>(info->txBytes);
+        json["serverLogs"]  = Raptor::Core::Api::Utils::ToLogEntryJson(*serverLogs);
+        json["sessionLogs"] = Raptor::Core::Api::Utils::ToLogEntryJson(*sessionLogs);
+        callback(drogon::HttpResponse::newHttpJsonResponse(json));
+    }
+    catch (const std::exception& e) {
+        Json::Value err;
+        err["error"] = e.what();
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+        resp->setStatusCode(drogon::k500InternalServerError);
+        callback(resp);
+    }
+    catch (...) {
+        Json::Value err;
+        err["error"] = "unknown server error";
+        auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
+        resp->setStatusCode(drogon::k500InternalServerError);
+        callback(resp);
+    }
+}
+
+
+
+
+
+
+
+
 void Server::getServers( const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback){
     try {
         auto& servers = Raptor::Core::Context::get().servers();
@@ -338,9 +418,9 @@ void Server::createServer(const HttpRequestPtr& req, std::function<void(const Ht
     }
 }
 
-void Server::updateServer(const HttpRequestPtr& req,
-                          std::function<void(const HttpResponsePtr&)>&& callback)
-{
+
+
+void Server::updateServer(const HttpRequestPtr& req,std::function<void(const HttpResponsePtr&)>&& callback){
     try {
         auto body = req->getJsonObject();
         if (!body) {
@@ -351,22 +431,19 @@ void Server::updateServer(const HttpRequestPtr& req,
             return callback(resp);
         }
 
-        if (!body->isMember("newName") || !body->isMember("port") || !body->isMember("ip") || !body->isMember("originalName")) {
+        if (!body->isMember("name") || !body->isMember("port") || !body->isMember("ip")) {
             Json::Value err;
-            err["error"] = "missing required fields: newName, port, ip,originalName";
+            err["error"] = "missing required fields: name, port, ip";
             auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
             resp->setStatusCode(drogon::k400BadRequest);
             return callback(resp);
         }
 
-        const std::string oldName = (*body)["originalName"].asString();
-        const std::string ip      = (*body)["ip"].asString();
-        const std::string newName = body->isMember("newName")
-                                        ? (*body)["newName"].asString()
-                                        : oldName;
-        const int portNum = (*body)["port"].asInt();
+        const std::string name    = (*body)["name"].asString();
+        const std::string ip = (*body)["ip"].asString();
+        const int   portNum = (*body)["port"].asInt();
 
-        if (oldName.empty() || oldName.size() > 50) {
+        if (name.empty() || name.size() > 50) {
             Json::Value err;
             err["error"] = "name: required, max 50 chars";
             auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
@@ -384,24 +461,9 @@ void Server::updateServer(const HttpRequestPtr& req,
 
         auto& servers = Raptor::Core::Context::get().servers();
 
-        if (!servers.hasServer(oldName)) {
-            Json::Value err;
-            err["error"] = std::format("server '{}' not found", oldName);
-            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
-            resp->setStatusCode(drogon::k404NotFound);
-            return callback(resp);
-        }
 
-        // Reject rename if new name is already taken by a different server
-        if (newName != oldName && servers.hasServer(newName)) {
-            Json::Value err;
-            err["error"] = std::format("server '{}' already exists", newName);
-            auto resp = drogon::HttpResponse::newHttpJsonResponse(err);
-            resp->setStatusCode(drogon::k409Conflict);
-            return callback(resp);
-        }
 
-        auto ok = servers.updateServer(oldName,static_cast<uint16_t>(portNum),ip,newName);
+        auto ok = servers.updateServer(name, static_cast<uint16_t>(portNum), ip);
 
         Json::Value json;
         json["success"] = ok.has_value();
@@ -412,7 +474,7 @@ void Server::updateServer(const HttpRequestPtr& req,
             return callback(resp);
         }
 
-        json["message"] = std::format("server '{}' updated successfully", newName);
+        json["message"] = std::format("server '{}' updated successfully", name);
         callback(drogon::HttpResponse::newHttpJsonResponse(json));
     }
     catch (const std::exception& e) {

@@ -10,8 +10,7 @@ export interface CreateServerPayload {
   type: ServerType;
 }
 export interface UpdateServerPayload {
-  originalName: string;
-  newName: string;
+  name: string;
   ip: string;
   port: number;
 }
@@ -31,6 +30,18 @@ export interface ServerInfo {
   error?: string; // if there is error
   rxBytes: number;
   txBytes: number;
+}
+export interface ServerDetail {
+  config: Config;
+  status: Status;
+  sessionCounter: number;
+  type: ServerType;
+  error?: string;
+  rxBytes: number;
+  txBytes: number;
+  uptimeSeconds: number;
+  serverLogs: log[];
+  sessionLogs: log[];
 }
 
 export type getAllServersResponse = ServerInfo[];

@@ -46,7 +46,7 @@ export function ServerCard({ server }: { server: ServerInfo }) {
   return (
     <Card className="bg-card border-border hover:ring-1 hover:ring-primary/50 transition-all cursor-pointer group">
       <CardContent className="p-4">
-        <Link to={`/servers/${server.config.instanceName}`}>
+        <Link to={`/server/${server.config.instanceName}`}>
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded flex items-center justify-center bg-secondary">

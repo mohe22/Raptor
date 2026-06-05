@@ -13,6 +13,7 @@ export interface log {
   ts: number;
   level: LogLevel;
   category: LogCategory;
+  serverId: string;
   event: string;
   message: string;
   meta: string;

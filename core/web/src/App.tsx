@@ -130,7 +130,7 @@ function ServerCard({ server }: { server: ServerEntry }) {
   const TypeIcon = iconMap[typeConfig.icon];
 
   return (
-    <Link to={`/manager?server=${server.name}`}>
+    <Link to={`/server/${server.name}`}>
       <Card className="bg-card border-border hover:ring-primary/50 transition-all cursor-pointer group">
         <CardContent className="p-4">
           <div className="flex items-start justify-between mb-3">

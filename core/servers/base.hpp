@@ -1,6 +1,7 @@
 #pragma once
 
 #include <arpa/inet.h>
+#include <cstdint>
 #include <cstring>
 #include <thread>
 
@@ -422,6 +423,7 @@ namespace Raptor::Core::Servers {
 
 
     private:
+
 
         /// Runtime configuration.
         ServerConfig config_;

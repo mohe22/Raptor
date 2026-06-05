@@ -59,7 +59,7 @@ namespace Raptor::Core::Servers {
         std::vector<ServerEntry> servers; // Per-server breakdown.
     };
 
-    /**
+     /**
      * @brief Owns and manages all running server instances.
      *
      * Each server is identified by its instance name from ServerConfig.
@@ -205,32 +205,21 @@ namespace Raptor::Core::Servers {
         ServerPoolStatus getServerPoolStatus() const noexcept;
 
         /**
-         * @brief Updates the name, IP, or port of an existing server.
+         * @brief Updates the IP or port of an existing server.
          *
-         * Behavior depends on what changed:
+         * Performs a full stop → destroy → recreate cycle.
+         * All active sessions are dropped and the port is released and re-bound.
          *
-         * - Name only (ip and port unchanged): performs a zero-downtime map
-         *   re-key. No socket teardown, no session drops, no restart.
-         *
-         * - Network config changed (ip or port differ): performs a full
-         *   stop → destroy → recreate cycle. All active sessions are dropped
-         *   and the port is released and re-bound.
-         *
-         * @note If only the name is the same as the old one and nothing else
-         *       changed, the function returns true immediately (no-op).
-         *
-         * @param oldName  Instance name of the server to update.
-         * @param port     New listening port (1–65535).
-         * @param ip       New binding IP address (IPv4 or IPv6).
-         * @param newName  New instance name — pass oldName to keep it unchanged.
-         * @return         on success retrun void, if faild return string telling the error.
-         *
+         * @param name  Instance name of the server to update.
+         * @param port  New listening port (1–65535).
+         * @param ip    New binding IP address (IPv4 or IPv6).
+         * @return      void on success, error string on failure.
          */
-        std::expected<void,std::string> updateServer(const std::string& oldName,
-                          const uint16_t     port,
-                          const std::string& ip,
-                          const std::string& newName) ;
-    private:
+        std::expected<void, std::string> updateServer(const std::string& name,
+                                                      const uint16_t     port,
+                                                      const std::string& ip);
+        std::optional<ServerInfo> getServerInfo(const std::string& name) const noexcept;
+        private:
         /// Owns all server instances  key is instance name.
         std::unordered_map<std::string, std::unique_ptr<Base>> servers_;
 

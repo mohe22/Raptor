@@ -57,7 +57,7 @@ namespace Raptor::Core::Servers {
                 if (recvBytes > 0)
                     addRxBytes(recvBytes);
                 std::println("{}", sender.getIp().value());
-                Session::UdpSession* peer = sessionManager.getOrCreate<Session::UdpSession>(sender);
+                Session::UdpSession* peer = sessionManager.getOrCreate<Session::UdpSession>(sender,config().instanceName);
                 size_t replySize = callbacks_.datagram(bufTmp, recvBytes, peer, server_);
                 if (replySize > 0)
                     addTxBytes(replySize);

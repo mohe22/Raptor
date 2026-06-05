@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   createServer,
   getAllServers,
+  getServerById,
   pauseServer,
   poolStatus,
   resumeServer,
@@ -164,12 +165,11 @@ export const useUpdateServer = () => {
       // Patch all-servers list: update the matching entry by originalName
       qc.setQueryData(SERVER_QUERY_KEYS.all, (old: ServerInfo[] = []) =>
         old.map((s) =>
-          s.config.instanceName === payload.originalName
+          s.config.instanceName === payload.name
             ? {
                 ...s,
                 config: {
                   ...s.config,
-                  instanceName: payload.newName,
                   ip: payload.ip,
                   port: payload.port,
                 },
@@ -186,10 +186,10 @@ export const useUpdateServer = () => {
           return {
             ...old,
             servers: old.servers.map((s) =>
-              s.name === payload.originalName
+              s.name === payload.name
                 ? {
                     ...s,
-                    name: payload.newName,
+                    name: payload.name,
                     ipAddress: payload.ip,
                     port: payload.port,
                     status: "running" as const, // server restarts on update
@@ -203,3 +203,9 @@ export const useUpdateServer = () => {
     },
   });
 };
+export const useGetServerById = (id: string) =>
+  useQuery({
+    queryKey: SERVER_QUERY_KEYS.byId(id),
+    queryFn: () => getServerById(id),
+    enabled: !!id,
+  });

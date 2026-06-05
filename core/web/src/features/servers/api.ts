@@ -2,6 +2,8 @@ import { api } from "../../lib/api";
 import type {
   CreateServerPayload,
   getAllServersResponse,
+  ServerDetail,
+  ServerInfo,
   ServerPoolStatus,
 } from "../../types/server";
 
@@ -26,3 +28,6 @@ export const createServer = async (payload: CreateServerPayload) =>
     method: "POST",
     body: JSON.stringify(payload),
   });
+
+export const getServerById = async (id: string) =>
+  await api<ServerDetail>(`/server/get-server/${id}`, { method: "GET" });

@@ -1,6 +1,7 @@
 #pragma once
 #include <drogon/HttpController.h>
 #include <drogon/drogon.h>
+#include <string>
 using namespace drogon;
 class Server : public drogon::HttpController<Server>
 {
@@ -8,6 +9,9 @@ class Server : public drogon::HttpController<Server>
     METHOD_LIST_BEGIN
     METHOD_ADD(Server::getServers,
                "/get-servers",
+               Get,"AuthFilter");
+    METHOD_ADD(Server::getServerById,
+               "/get-server/{1}",
                Get,"AuthFilter");
     METHOD_ADD(Server::pauseServer,
                "/pause/{1}",
@@ -37,6 +41,8 @@ class Server : public drogon::HttpController<Server>
                       std::function<void(const HttpResponsePtr&)>&& callback);
     void getServers(const HttpRequestPtr& req,
                     std::function<void(const HttpResponsePtr&)>&& callback);
+    void getServerById(const HttpRequestPtr& req,
+                     std::function<void(const HttpResponsePtr&)>&& callback,const std::string&);
     void pauseServer(const HttpRequestPtr& req,
                     std::function<void(const HttpResponsePtr&)>&& callback,
                     const std::string& serverName);

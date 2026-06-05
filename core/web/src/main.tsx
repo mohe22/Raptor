@@ -11,6 +11,7 @@ import { Toaster } from "./components/ui/sonner";
 import { ServersPage } from "./pages/servers-page";
 import { CreateServerPage } from "./pages/create-server-page";
 import { UpdateServerPage } from "./pages/update-server-page";
+import { ServerPage } from "./pages/server-page";
 
 const root = document.getElementById("root");
 const queryClient = new QueryClient();
@@ -28,6 +29,7 @@ ReactDOM.createRoot(root).render(
             <Route path="/servers" element={<ServersPage />} />
             <Route path="/new-server" element={<CreateServerPage />} />
             <Route path="/update-server" element={<UpdateServerPage />} />
+            <Route path="/server/:serverId" element={<ServerPage />} />
           </Route>
         </Routes>
         <Toaster duration={5000} />

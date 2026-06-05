@@ -4,6 +4,7 @@
 #include "libs/net/include/address.hpp"
 #include <cstdint>
 #include <shared_mutex>
+#include <string>
 #include <unordered_map>
 #include <thread>
 #include <atomic>
@@ -77,7 +78,7 @@ namespace Raptor::Core::Server {
                 std::unique_lock lock(mutex_);
                 sessions_.emplace(raw->id(), std::move(session));
             }
-            onSessionCreated(raw->id(), raw->getAddressStr(), raw->type());
+            onSessionCreated(raw->id(), raw->getAddressStr(), raw->type(),raw->connectedTo());
             return raw;
         }
 
@@ -92,13 +93,13 @@ namespace Raptor::Core::Server {
          * @return         Raw non-owning pointer, or nullptr if the address is invalid.
          */
         template<typename T>
-        T* getOrCreate(const Net::Address& address) {
+        T* getOrCreate(const Net::Address& address,const std::string& connectedTo) {
             static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
             auto ip   = address.getIp();
             auto port = address.getPort();
             // should never happen address is validated before reaching here
             [[unlikely]] if (!ip || !port) {
-                onSessionCreateFailed();
+                onSessionCreateFailed(connectedTo);
                 return nullptr;
             }
             const std::string target = std::format("{}:{}", ip.value(), port.value());
@@ -108,11 +109,12 @@ namespace Raptor::Core::Server {
                 for (const auto& [sid, session] : sessions_)
                     if (session->getAddressStr() == target)
                         return static_cast<T*>(session.get());
-                auto session = std::make_unique<T>(std::move(address), Common::nextId());
+                auto session = std::make_unique<T>(std::move(address), Common::nextId(),connectedTo);
                 raw = static_cast<T*>(session.get());
                 sessions_.emplace(session->id(), std::move(session));
             }
-            onSessionCreated(raw->id(), target, raw->type());
+            onSessionCreated(raw->id(), target, raw->type(),connectedTo);
+
             return raw;
         }
 
@@ -234,11 +236,11 @@ namespace Raptor::Core::Server {
         std::atomic<bool>  running_;  /// Controls monitor loop lifetime.
         std::condition_variable_any cv_;       /// Wakes monitor early on shutdown.
 
-        /// Logs a new session creation with id, address, and protocol.
-        void onSessionCreated(uint64_t id, const std::string& address, Common::Types::ServerType type) noexcept;
+        void onSessionCreated(const uint64_t id, const std::string& address,
+                                               const Common::Types::ServerType type,
+                                               const std::string& serverId) noexcept;
 
-        /// Logs a failed session creation due to an invalid address.
-        void onSessionCreateFailed() noexcept;
+        void onSessionCreateFailed(const std::string& serverId) noexcept;
 
         /// Starts the background monitor thread.
         void startMonitor();
