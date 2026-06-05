@@ -8,7 +8,7 @@ class Server : public drogon::HttpController<Server>
     METHOD_LIST_BEGIN
     METHOD_ADD(Server::getServers,
                "/get-servers",
-               Get);
+               Get,"AuthFilter");
     METHOD_ADD(Server::pauseServer,
                "/pause/{1}",
                Post,
@@ -50,4 +50,5 @@ class Server : public drogon::HttpController<Server>
                      std::function<void(const HttpResponsePtr&)>&& callback);
     void createServer(const HttpRequestPtr& req,
                      std::function<void(const HttpResponsePtr&)>&& callback);
+
 };

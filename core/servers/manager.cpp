@@ -291,7 +291,7 @@ namespace Raptor::Core::Servers {
             Context::get().logs().error(
                 Db::LogCategory::Server,
                 "SERVER_UPDATE_FAIL",
-                std::format("[{}] update failed, slot is now empty: {}", oldName, ok.error())
+                std::format("[{}] update Failed, ", oldName, ok.error())
             );
             return ok;
         }

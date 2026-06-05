@@ -7,7 +7,6 @@ CREATE TABLE IF NOT EXISTS logLevels (
         level IN ('DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL')
     )
 );
-
 INSERT OR IGNORE INTO logLevels(id, level) VALUES
     (0, 'DEBUG'),
     (1, 'INFO'),
@@ -17,11 +16,10 @@ INSERT OR IGNORE INTO logLevels(id, level) VALUES
 
 CREATE TABLE IF NOT EXISTS logCategories (
     id       INTEGER PRIMARY KEY,
-    category TEX TNOT NULL CHECK (
+    category TEXT    NOT NULL CHECK (
         category IN ('SYSTEM', 'SERVER', 'AGENT', 'SESSION')
     )
 );
-
 INSERT OR IGNORE INTO logCategories(id, category) VALUES
     (0, 'SYSTEM'),
     (1, 'SERVER'),
@@ -29,16 +27,18 @@ INSERT OR IGNORE INTO logCategories(id, category) VALUES
     (3, 'SESSION');
 
 CREATE TABLE IF NOT EXISTS logs (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    ts         INTEGER NOT NULL DEFAULT (unixepoch()),
-    levelId    INTEGER NOT NULL REFERENCES logLevels(id),
+    id  INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts  INTEGER NOT NULL DEFAULT (unixepoch()),
+    levelId  INTEGER NOT NULL REFERENCES logLevels(id),
     categoryId INTEGER NOT NULL REFERENCES logCategories(id),
-    event      TEXT    NOT NULL,
-    message    TEXT    NOT NULL,
-    meta       TEXT
+    serverId   TEXT,
+    event TEXT    NOT NULL,
+    message TEXT    NOT NULL,
+    meta TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_logs_ts       ON logs(ts);
 CREATE INDEX IF NOT EXISTS idx_logs_level    ON logs(levelId);
 CREATE INDEX IF NOT EXISTS idx_logs_category ON logs(categoryId);
 CREATE INDEX IF NOT EXISTS idx_logs_event    ON logs(event);
+CREATE INDEX IF NOT EXISTS idx_logs_server   ON logs(serverId);

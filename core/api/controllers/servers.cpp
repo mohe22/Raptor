@@ -124,6 +124,8 @@ void Server::getServers( const HttpRequestPtr& req, std::function<void(const Htt
     }
 }
 
+
+
 void Server::pauseServer(const HttpRequestPtr& req,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& serverName) {
     try {
         auto& servers = Raptor::Core::Context::get().servers();
