@@ -158,14 +158,11 @@ namespace Raptor::Core::Servers {
             * Stops the TCP server, terminates the epoll loop,
             * and waits for the worker thread to exit safely.
             *
-            * join() ensures all asynchronous operations are fully
-            * completed before resources are destroyed.
-            */
+        */
         void stop() noexcept override {
             changeStatus(ServerStatus::Stopped);
             epoll_.stop();
             server_.stop();
-            join();
         }
 
 

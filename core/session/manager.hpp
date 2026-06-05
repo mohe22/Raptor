@@ -214,7 +214,7 @@ namespace Raptor::Core::Server {
             static_assert(std::is_base_of_v<Session::Base, T>, "T must inherit from Session::Base");
             std::shared_lock lock(mutex_);
             for (const auto& [id, session] : sessions_)
-                if (auto* ptr = dynamic_cast<T*>(session.get()))
+                if (auto* ptr = static_cast<T*>(session.get()))
                     fn(ptr);
         }
 

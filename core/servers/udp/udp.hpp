@@ -151,14 +151,12 @@ namespace Raptor::Core::Servers {
         /**
          * @brief Stops the server and joins the worker thread.
          *
-         * Signals the epoll loop to exit, stops the UDP socket, then blocks
-         * until the worker thread has returned. Safe to call multiple times.
+         * Signals the epoll loop to exit
          */
         void stop() noexcept override {
             changeStatus(ServerStatus::Stopped);
             server_.stop();
             epoll_.stop();
-            join();
         }
 
         /** @return true if the base status, epoll loop, and UDP socket are all running. */

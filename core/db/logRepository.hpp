@@ -160,23 +160,7 @@ public:
         return rows;
     }
 
-    Result<int> count(const LogFilter& f = {}) noexcept
-    {
-        std::string sql = "SELECT COUNT(*) FROM logs WHERE 1=1";
-        if (f.level)    sql += " AND levelId = "    + std::to_string(static_cast<int>(*f.level));
-        if (f.category) sql += " AND categoryId = " + std::to_string(static_cast<int>(*f.category));
-        if (f.event)    sql += " AND event = '"     + *f.event + "'";
-        if (f.from)     sql += " AND ts >= "        + std::to_string(*f.from);
-        if (f.to)       sql += " AND ts <= "        + std::to_string(*f.to);
 
-        int total = 0;
-        auto result = db_.query(sql, [&](Row row) {
-            total = row.getInt(0);
-        });
-
-        if (!result) return std::unexpected(result.error());
-        return total;
-    }
 
     Result<int> clear() noexcept {
         return db_.exec("DELETE FROM logs");

@@ -13,20 +13,34 @@ namespace Raptor::Core::Servers {
         stopAll();
     }
 
+    void Manager::stopAll() noexcept {
+        std::vector<std::unique_ptr<Base>> toStop;
+        {
+            std::unique_lock lock(mutex_);
+            for (auto& [name, server] : servers_)
+                server->stop();
+            for (auto& [name, server] : servers_)
+                toStop.push_back(std::move(server));
+            servers_.clear();
+        }
+        for (auto& server : toStop)
+            server->join();
+    }
+
     const ServerConfig Manager::getServerConfig(const std::string& name) const noexcept {
         std::shared_lock lock(mutex_);
         if (!servers_.contains(name)) return {};
         return servers_.at(name)->config();
     }
 
-    std::expected<void,std::string> Manager::createServer(Common::Types::ServerType type, ServerConfig config) noexcept {
+    std::expected<void,std::string> Manager::createServer(Common::Types::ServerType type, ServerConfig config) {
         if (!ServerConfig::isValid(config)) {
             Context::get().logs().warn(
                 Db::LogCategory::Server,
                 "SERVER_INVALID_CONFIG",
                 std::format("[{}] invalid server config", config.instanceName)
             );
-            return  std::unexpected{"Invalid server config."};
+            return std::unexpected{"Invalid server config."};
         }
 
         std::unique_ptr<Base> server;
@@ -38,23 +52,22 @@ namespace Raptor::Core::Servers {
                 server = std::make_unique<UdpServer>(config);
                 break;
             default:
-                return  std::unexpected{"Unsupported server type yet!"};
-
+                return std::unexpected{"Unsupported server type yet!"};
         }
 
         if (!server->start()) {
             Context::get().logs().error(
                 Db::LogCategory::Server,
                 "SERVER_START_FAIL",
-                std::format("[{}] Failed to start: {}", config.instanceName, server->getErrorMsg())
+                std::format("[{}] failed to start: {}", config.instanceName, server->getErrorMsg())
             );
-            return std::unexpected{"Faild to start the server check the logs."};
-
+            return std::unexpected{"Failed to start the server, check the logs."};
         }
 
         {
             std::unique_lock lock(mutex_);
-            if (servers_.contains(config.instanceName)) return std::unexpected{"the server name already exist!"};
+            if (servers_.contains(config.instanceName))
+                return std::unexpected{"Server name already exists."};
             servers_.emplace(config.instanceName, std::move(server));
         }
 
@@ -76,49 +89,30 @@ namespace Raptor::Core::Servers {
             owned = std::move(it->second);
             servers_.erase(it);
         }
-
         owned->stop();
+        owned->join();
 
         Context::get().logs().info(
             Db::LogCategory::Server,
             "SERVER_STOP",
             std::format("[{}] server stopped", name)
         );
-
         return true;
     }
 
     bool Manager::pauseServer(const std::string& name) {
-        {
-            std::unique_lock lock(mutex_);
-            auto it = servers_.find(name);
-            if (it == servers_.end()) return false;
-            it->second->pause();
-        }
-
-        Context::get().logs().info(
-            Db::LogCategory::Server,
-            "SERVER_PAUSE",
-            std::format("[{}] server paused", name)
-        );
-
+        std::unique_lock lock(mutex_);
+        auto it = servers_.find(name);
+        if (it == servers_.end()) return false;
+        it->second->pause();
         return true;
     }
 
     bool Manager::resumeServer(const std::string& name) {
-        {
-            std::unique_lock lock(mutex_);
-            auto it = servers_.find(name);
-            if (it == servers_.end()) return false;
-            it->second->resume();
-        }
-
-        Context::get().logs().info(
-            Db::LogCategory::Server,
-            "SERVER_RESUME",
-            std::format("[{}] server resumed", name)
-        );
-
+        std::unique_lock lock(mutex_);
+        auto it = servers_.find(name);
+        if (it == servers_.end()) return false;
+        it->second->resume();
         return true;
     }
 
@@ -146,13 +140,6 @@ namespace Raptor::Core::Servers {
         if (it == servers_.end()) return;
         it->second->getRxBytes(rxBytes);
         it->second->getTxBytes(txBytes);
-    }
-
-    void Manager::stopAll() noexcept {
-        std::unique_lock lock(mutex_);
-        for (auto& [name, server] : servers_)
-            server->stop();
-        servers_.clear();
     }
 
     void Manager::joinAll() noexcept {
@@ -188,7 +175,7 @@ namespace Raptor::Core::Servers {
         return info;
     }
 
-    bool Manager::hasServer(const std::string& name) const noexcept{
+    bool Manager::hasServer(const std::string& name) const noexcept {
         std::shared_lock lock(mutex_);
         return servers_.find(name) != servers_.end();
     }
@@ -219,33 +206,35 @@ namespace Raptor::Core::Servers {
 
             const bool running = (status == ServerStatus::Running);
 
-            pool.runningServerCount  += running ? 1 : 0;
-            pool.totalBytesReceived  += rx;
-            pool.totalBytesSent += tx;
+            pool.runningServerCount += running ? 1 : 0;
+            pool.totalBytesReceived += rx;
+            pool.totalBytesSent     += tx;
 
             const size_t sessionCount = server->sessionManager.count();
-            pool.totalSessionCount   += sessionCount;
-            pool.activeSessionCount  += running ? sessionCount : 0;
+            pool.totalSessionCount  += sessionCount;
+            pool.activeSessionCount += running ? sessionCount : 0;
 
             pool.servers.push_back(ServerEntry{
-                .name = config.instanceName,
-                .ipAddress = config.ip,
-                .port = config.port,
-                .type = server->type(),
-                .status = status,
-                .sessionCount = sessionCount,
-                .bytesSent = tx,
+                .name          = config.instanceName,
+                .ipAddress     = config.ip,
+                .port          = config.port,
+                .type          = server->type(),
+                .status        = status,
+                .sessionCount  = sessionCount,
+                .bytesSent     = tx,
                 .bytesReceived = rx,
-                .startTime = server->uptime()
+                .startTime     = server->uptime()
             });
         }
 
         return pool;
     }
-    std::expected<void,std::string> Manager::updateServer(const std::string& oldName, const uint16_t port,const std::string& ip, const std::string& newName) noexcept{
+
+    std::expected<void,std::string> Manager::updateServer(const std::string& oldName,const uint16_t port,const std::string& ip,const std::string& newName){
         Common::Types::ServerType type;
-        ServerConfig newConfig;
+        ServerConfig  newConfig;
         bool nameOnly = false;
+        std::unique_ptr<Base> owned;
 
         {
             std::unique_lock lock(mutex_);
@@ -255,14 +244,14 @@ namespace Raptor::Core::Servers {
                 return std::unexpected{"server not found!"};
 
             if (newName != oldName && servers_.contains(newName))
-                return std::unexpected{std::format(" {} already exist!",newName)};
+                return std::unexpected{std::format("{} already exist!", newName)};
 
             const ServerConfig& current = it->second->config();
             nameOnly = (current.port == port) &&
                        (strncmp(current.ip, ip.c_str(), sizeof(current.ip)) == 0);
 
             if (nameOnly) {
-                std::unordered_map<std::string, std::unique_ptr<Base>>::node_type node = servers_.extract(it);
+                auto node = servers_.extract(it);
                 node.mapped()->updateInstanceName(newName);
                 node.key() = newName;
                 servers_.insert(std::move(node));
@@ -271,7 +260,7 @@ namespace Raptor::Core::Servers {
                 newConfig = current;
 
                 newConfig.instanceName = newName;
-                newConfig.port= port;
+                newConfig.port         = port;
                 strncpy(newConfig.ip, ip.c_str(), sizeof(newConfig.ip) - 1);
                 newConfig.ip[sizeof(newConfig.ip) - 1] = '\0';
                 newConfig.ipType = Core::Api::Utils::detectIpType(ip);
@@ -279,8 +268,7 @@ namespace Raptor::Core::Servers {
                 if (!ServerConfig::isValid(newConfig))
                     return std::unexpected{"invalid config!"};
 
-                it->second->stop();
-                it->second->join();
+                owned = std::move(it->second);
                 servers_.erase(it);
             }
         }
@@ -289,18 +277,21 @@ namespace Raptor::Core::Servers {
             Context::get().logs().info(
                 Db::LogCategory::Server,
                 "SERVER_RENAMED",
-                std::format("[{}] renamed to '{}' (no restart, sessions preserved)", oldName, newName)
+                std::format("[{}] renamed to '{}'", oldName, newName)
             );
             return {};
         }
 
-        std::expected<void,std::string> ok = createServer(type, newConfig);
+        owned->stop();
+        owned->join();
+        owned.reset();
+
+        auto ok = createServer(type, newConfig);
         if (!ok) {
             Context::get().logs().error(
                 Db::LogCategory::Server,
-                "SERVER_UPDATE_RECREATE_FAIL",
-                std::format("[{}] update failed: could not recreate server as '{}' (ip='{}', port={})",
-                    oldName, newName, ip, port)
+                "SERVER_UPDATE_FAIL",
+                std::format("[{}] update failed, slot is now empty: {}", oldName, ok.error())
             );
             return ok;
         }
@@ -312,6 +303,8 @@ namespace Raptor::Core::Servers {
                 oldName, newName, ip, port),
             newConfig.toJsonStr()
         );
+
         return {};
     }
+
 } // namespace Raptor::Core::Servers

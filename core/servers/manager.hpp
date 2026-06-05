@@ -84,7 +84,7 @@ namespace Raptor::Core::Servers {
          * @param config  Server configuration including name, ip, and port.
          * @return        expected if success return nothing if error return the reason.
          */
-        std::expected<void,std::string> createServer(Common::Types::ServerType type, ServerConfig config) noexcept;
+        std::expected<void,std::string> createServer(Common::Types::ServerType type, ServerConfig config) ;
 
         /**
          * @brief Stops and removes a server by instance name.
@@ -229,7 +229,7 @@ namespace Raptor::Core::Servers {
         std::expected<void,std::string> updateServer(const std::string& oldName,
                           const uint16_t     port,
                           const std::string& ip,
-                          const std::string& newName) noexcept;
+                          const std::string& newName) ;
     private:
         /// Owns all server instances  key is instance name.
         std::unordered_map<std::string, std::unique_ptr<Base>> servers_;

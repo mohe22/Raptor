@@ -14,7 +14,7 @@ import { Input } from "../ui/input";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import type { Config } from "../../types/server";
-
+import { useSearchParams } from "react-router";
 const updateServerSchema = z.object({
   name: z
     .string()
@@ -49,10 +49,9 @@ function detectIpType(ip: string) {
 
 type UpdateServerFormProps = {
   config: Config;
-  onSuccess?: () => void;
 };
 
-export function UpdateServerForm({ config, onSuccess }: UpdateServerFormProps) {
+export function UpdateServerForm({ config }: UpdateServerFormProps) {
   const {
     register,
     handleSubmit,
@@ -72,6 +71,7 @@ export function UpdateServerForm({ config, onSuccess }: UpdateServerFormProps) {
   const ipValue = watch("ip");
   const ipType = useMemo(() => detectIpType(ipValue), [ipValue]);
 
+  const [, setSearchParams] = useSearchParams();
   function handleFormSubmit(values: UpdateServerFormValues) {
     mutate(
       {
@@ -80,7 +80,13 @@ export function UpdateServerForm({ config, onSuccess }: UpdateServerFormProps) {
         ip: values.ip,
         port: Number(values.port),
       },
-      { onSuccess },
+      {
+        onSuccess: () => {
+          setSearchParams({
+            server: values.name,
+          });
+        },
+      },
     );
   }
 

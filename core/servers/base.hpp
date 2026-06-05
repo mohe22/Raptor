@@ -329,15 +329,14 @@ namespace Raptor::Core::Servers {
 
             status_.store(ServerStatus::Running, std::memory_order_release);
             startTime_ = Common::Types::Clock::now();
-            thread_ = std::jthread([&]() {
+            thread_ = std::jthread([this]() {
                 if (!run()) {
                     if (error.has()) {
                         status_.store(ServerStatus::Error, std::memory_order_release);
                     }
                 }
             });
-            // if error has occurred, return false
-            return !error.has() ;
+            return true;
         }
 
         virtual void pause() noexcept = 0;
