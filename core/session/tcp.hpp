@@ -44,7 +44,6 @@ namespace Raptor::Core::Session {
         std::println("AppArmor Enabled  : {}", reg.apparmorEnabled);
         std::println("Timezone          : {}", reg.timezone);
         std::println("Locale            : {}", reg.locale);
-        std::println("First Seen        : {}", reg.firstSeenAt);
     }
     class TcpSession :
     public Net::Poll::Descriptor,

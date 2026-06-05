@@ -31,8 +31,53 @@ namespace Raptor::Core::Server {
     };
 
     using SessionsInfoList = std::vector<BriefSessionInfo>;
+    struct SessionDetails{
+
+        uint64_t id;
+        Common::Types::ServerType protocol;
+        Session::Status status;
+        uint64_t idleSeconds;
+        Common::Types::TimePoint connectedAt;
+        std::string remoteAddress; // ip:port
+
+        std::string hostname;
+        std::string username;
+        std::string shell;
+        std::string homeDir;
+
+        bool isAdmin;
+        bool isSudoer;
+        bool isDocker;
+        bool isVm;
+        bool isDomainJoined;
 
 
+        std::string os;
+        std::string arch;
+
+        uint32_t pid;
+        std::string processPath;
+        std::string processName;
+
+        std::string timezone;
+        std::string locale;
+        std::string domain;
+
+
+        std::string internalIp;
+        std::string macAddress;
+        std::string dns;
+
+
+        SessionDetails(const SessionDetails&)= delete;
+        SessionDetails& operator=(const SessionDetails&) = delete;
+
+        SessionDetails(SessionDetails&&)= default;
+        SessionDetails& operator=(SessionDetails&&)= default;
+
+        SessionDetails() = default;
+    };
+    using SessionsDetailsList = std::vector<SessionDetails>;
     /**
      * @brief Owns and manages all active sessions regardless of protocol type.
      *
@@ -228,6 +273,7 @@ namespace Raptor::Core::Server {
          */
         SessionsInfoList getSessionsInfo() const;
 
+        SessionsDetailsList getSessionsDetails() const noexcept;
     private:
         /// Owns all sessions — key is session id, value is the session itself.
         std::unordered_map<uint64_t, std::unique_ptr<Session::Base>> sessions_;

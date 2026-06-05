@@ -1,4 +1,5 @@
 import type { log } from "./logs";
+import type { SessionDetails } from "./session";
 
 export type IpType = "IPv4" | "IPv6" | "domain";
 export type Status = "running" | "paused" | "error" | "stopped";
@@ -31,6 +32,7 @@ export interface ServerInfo {
   rxBytes: number;
   txBytes: number;
 }
+
 export interface ServerDetail {
   config: Config;
   status: Status;
@@ -42,6 +44,7 @@ export interface ServerDetail {
   uptimeSeconds: number;
   serverLogs: log[];
   sessionLogs: log[];
+  sessions: SessionDetails[];
 }
 
 export type getAllServersResponse = ServerInfo[];

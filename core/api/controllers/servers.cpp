@@ -1,8 +1,8 @@
 #include "servers.hpp"
 #include "core/api/utils.hpp"
 #include "core/context.hpp"
+#include "core/session/manager.hpp"
 #include "type.hpp"
-#include <print>
 
 void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
     try {
@@ -128,6 +128,51 @@ void Server::getServerById(const HttpRequestPtr& req,std::function<void(const Ht
         json["txBytes"]        = static_cast<Json::UInt64>(info->txBytes);
         json["serverLogs"]  = Raptor::Core::Api::Utils::ToLogEntryJson(*serverLogs);
         json["sessionLogs"] = Raptor::Core::Api::Utils::ToLogEntryJson(*sessionLogs);
+
+
+
+        const Raptor::Core::Server::SessionsDetailsList& sessionsLists = servers.getSessionManager(id)->getSessionsDetails();
+
+        // Parse sessions into JSON array
+        Json::Value sessionsArray(Json::arrayValue);
+        for (const auto& session : sessionsLists) {
+            Json::Value sessionJson;
+            sessionJson["id"] = static_cast<Json::UInt64>(session.id);
+            sessionJson["protocol"] = Raptor::Common::Types::ToString(session.protocol);
+            sessionJson["status"] = static_cast<int>(session.status); // or convert to string
+            sessionJson["idleSeconds"] = static_cast<Json::UInt64>(session.idleSeconds);
+            sessionJson["connectedAtNs"] = static_cast<Json::Int64>(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    session.connectedAt.time_since_epoch()
+                ).count()
+            );
+            sessionJson["remoteAddress"] = session.remoteAddress;
+            sessionJson["hostname"] = session.hostname;
+            sessionJson["username"] = session.username;
+            sessionJson["shell"] = session.shell;
+            sessionJson["homeDir"] = session.homeDir;
+            sessionJson["isAdmin"] = session.isAdmin;
+            sessionJson["isSudoer"] = session.isSudoer;
+            sessionJson["isDocker"] = session.isDocker;
+            sessionJson["isVm"] = session.isVm;
+            sessionJson["isDomainJoined"] = session.isDomainJoined;
+            sessionJson["os"] = session.os;
+            sessionJson["arch"] = session.arch;
+            sessionJson["pid"] = session.pid;
+            sessionJson["processPath"] = session.processPath;
+            sessionJson["processName"] = session.processName;
+            sessionJson["timezone"] = session.timezone;
+            sessionJson["locale"] = session.locale;
+            sessionJson["domain"] = session.domain;
+            sessionJson["internalIp"] = session.internalIp;
+            sessionJson["macAddress"] = session.macAddress;
+            sessionJson["dns"] = session.dns;
+
+            sessionsArray.append(std::move(sessionJson));
+        }
+
+        json["sessions"] = std::move(sessionsArray);
+
         callback(drogon::HttpResponse::newHttpJsonResponse(json));
     }
     catch (const std::exception& e) {

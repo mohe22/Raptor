@@ -56,7 +56,6 @@ namespace Raptor::Common {
         // Misc
         char     timezone[64];
         char     locale[32];
-        int64_t  firstSeenAt;
 
         [[nodiscard]] std::vector<uint8_t> serialize() const noexcept {
             std::vector<uint8_t> buf(sizeof(Register));

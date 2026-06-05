@@ -257,7 +257,6 @@ Raptor::Common::Register collect() noexcept {
         if (lang) strncpy(reg.locale, lang, sizeof(reg.locale) - 1);
     }
 
-    reg.firstSeenAt = static_cast<int64_t>(std::time(nullptr));
 
     return reg;
 }
@@ -297,7 +296,6 @@ void printRegister(const Raptor::Common::Register& reg) {
     std::println("AppArmor Enabled  : {}", reg.apparmorEnabled);
     std::println("Timezone          : {}", reg.timezone);
     std::println("Locale            : {}", reg.locale);
-    std::println("First Seen        : {}", reg.firstSeenAt);
     std::println("==============================");
 }
 

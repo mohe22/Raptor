@@ -12,6 +12,7 @@ export function formatBytes(bytes: number): string {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
+
 export function formatUptime(seconds: number): string {
   if (seconds < 60) return `${seconds}s`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
@@ -24,3 +25,14 @@ export function formatUptime(seconds: number): string {
   const h = Math.floor((seconds % 86400) / 3600);
   return `${d}d ${h}h`;
 }
+export const formatIdleTime = (seconds: number): string => {
+  if (seconds < 60) return `${seconds}s`;
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+  if (seconds < 86400)
+    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;
+  return `${Math.floor(seconds / 86400)}d ${Math.floor((seconds % 86400) / 3600)}h`;
+};
+export const formatConnectionTime = (nanoseconds: number): string => {
+  const date = new Date(nanoseconds / 1_000_000);
+  return date.toLocaleString();
+};

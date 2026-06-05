@@ -10,9 +10,31 @@ import {
   Pencil,
   Clock,
   TrendingUp,
+  NetworkIcon,
+  ClockIcon,
+  ActivityIcon,
+  FolderIcon,
+  TerminalIcon,
+  CpuIcon,
+  WifiIcon,
+  ShieldIcon,
+  BoxIcon,
+  ChevronDownIcon,
+  XCircleIcon,
 } from "lucide-react";
-import { SERVER_STATUS_DOT } from "../lib/data";
-import { cn, formatBytes, formatUptime } from "../lib/utils";
+import {
+  getFlagByTimezone,
+  SERVER_STATUS_DOT,
+  SESSION_STATUS_DOT,
+  sessionOSConfig,
+} from "../lib/data";
+import {
+  cn,
+  formatBytes,
+  formatConnectionTime,
+  formatIdleTime,
+  formatUptime,
+} from "../lib/utils";
 import { PauseServerButton } from "../components/buttons/pause-server-button";
 import { ResumeServerButton } from "../components/buttons/resume-server-button";
 import {
@@ -26,10 +48,17 @@ import { Alert, AlertDescription, AlertTitle } from "../components/ui/alert";
 import {
   Card,
   CardContent,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
 import { TrafficGraph } from "../components/shared/trafficGraph";
+import { Badge } from "../components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "../components/ui/collapsible";
 
 type Tab = "Overview" | "Session" | "Logs";
 
@@ -42,7 +71,7 @@ interface TrafficPoint {
 export function ServerPage() {
   const { serverId } = useParams<{ serverId: string }>();
   const { data, isLoading, error } = useGetServerById(serverId);
-
+  console.log(data);
   const [tab, setTab] = useState<Tab>("Overview");
   const [trafficHistory, setTrafficHistory] = useState<TrafficPoint[]>([]);
   const [lastRx, setLastRx] = useState(0);
@@ -304,9 +333,228 @@ export function ServerPage() {
             </Card>
           </div>
         )}
-
         {tab === "Session" && (
-          <div className="h-96 flex items-center justify-center text-zinc-500"></div>
+          <div className="space-y-4">
+            {data.sessions?.map((sess) => {
+              const osConfig =
+                sessionOSConfig[sess.os] || sessionOSConfig.Unknown;
+              const flag = getFlagByTimezone(sess.timezone);
+              const statusColor = SESSION_STATUS_DOT[sess.status];
+
+              return (
+                <Card
+                  key={sess.id}
+                  className="hover:shadow-lg transition-shadow"
+                >
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        {/* OS Icon */}
+                        <div className="text-2xl">{osConfig.emoji}</div>
+
+                        {/* User & Hostname */}
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-lg">
+                              {sess.username}
+                            </span>
+                            <span className="text-muted-foreground">@</span>
+                            <span className="font-mono font-medium">
+                              {sess.hostname}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <span>
+                              {sess.os} ({sess.arch})
+                            </span>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              {flag && <span>{flag}</span>}
+                              <span>{sess.timezone}</span>
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Status Badge */}
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`w-2 h-2 rounded-full ${statusColor}`}
+                        />
+                        <span className="text-sm font-medium">
+                          {sess.status}
+                        </span>
+                        {sess.idleSeconds > 0 && (
+                          <span className="text-xs text-muted-foreground ml-1">
+                            (idle: {formatIdleTime(sess.idleSeconds)})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Connection Info */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <NetworkIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            Connection:
+                          </span>
+                          <span className="font-mono text-sm">
+                            {sess.remoteAddress}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <ClockIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            Connected:
+                          </span>
+                          <span>
+                            {formatConnectionTime(sess.connectedAtNs)}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <ActivityIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            Protocol:
+                          </span>
+                          <span className="font-mono">{sess.protocol}</span>
+                        </div>
+                      </div>
+
+                      {/* System Info */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <FolderIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Home:</span>
+                          <span className="font-mono text-sm truncate">
+                            {sess.homeDir}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <TerminalIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">Shell:</span>
+                          <span className="font-mono text-sm">
+                            {sess.shell}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <CpuIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">PID:</span>
+                          <span className="font-mono text-sm">{sess.pid}</span>
+                        </div>
+                      </div>
+
+                      {/* Network & Privileges */}
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm">
+                          <WifiIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            Internal IP:
+                          </span>
+                          <span className="font-mono text-sm">
+                            {sess.internalIp}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <ShieldIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            Privileges:
+                          </span>
+                          <div className="flex gap-2">
+                            {sess.isAdmin && (
+                              <Badge variant="destructive">Admin</Badge>
+                            )}
+                            {sess.isSudoer && (
+                              <Badge variant="default">Sudo</Badge>
+                            )}
+                            {!sess.isAdmin && !sess.isSudoer && (
+                              <span className="text-xs text-muted-foreground">
+                                Standard
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-sm">
+                          <BoxIcon className="w-4 h-4 text-muted-foreground" />
+                          <span className="text-muted-foreground">
+                            Environment:
+                          </span>
+                          <div className="flex gap-1">
+                            {sess.isDocker && (
+                              <Badge variant="outline" className="text-xs">
+                                Docker
+                              </Badge>
+                            )}
+                            {sess.isVm && (
+                              <Badge variant="outline" className="text-xs">
+                                VM
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Process Info (optional - can be collapsed) */}
+                    <Collapsible className="mt-4">
+                      <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+                        <ChevronDownIcon className="w-4 h-4" />
+                        <span>Process Details</span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2 space-y-1">
+                        <div className="text-sm bg-muted/30 rounded-md p-2 font-mono">
+                          {sess.processPath}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Process Name: {sess.processName} (PID: {sess.pid})
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </CardContent>
+
+                  <CardFooter className=" flex justify-between items-center">
+                    <div className="flex gap-1 text-xs text-muted-foreground">
+                      <span>MAC: {sess.macAddress}</span>
+                      <span>•</span>
+                      <span>DNS: {sess.dns}</span>
+                      <span>•</span>
+                      <span>Locale: {sess.locale}</span>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        // onClick={() => interactWithSession(sess.id)}
+                      >
+                        <TerminalIcon className="w-4 h-4 mr-1" />
+                        Interact
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        // onClick={() => killSession(sess.id)}
+                      >
+                        <XCircleIcon className="w-4 h-4 text-destructive" />
+                      </Button>
+                    </div>
+                  </CardFooter>
+                </Card>
+              );
+            })}
+
+            {(!data.sessions || data.sessions.length === 0) && (
+              <Card>
+                <CardContent className="py-8 text-center text-muted-foreground">
+                  No active sessions
+                </CardContent>
+              </Card>
+            )}
+          </div>
         )}
         {tab === "Logs" && (
           <div className="h-96 flex items-center justify-center text-zinc-500">

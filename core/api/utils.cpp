@@ -169,7 +169,6 @@ namespace Raptor::Core::Api::Utils {
          Json::Value misc;
          misc["timezone"]    = reg.timezone;
          misc["locale"]      = reg.locale;
-         misc["firstSeenAt"] = reg.firstSeenAt;
          return misc;
      }
      Json::Value ConvertToJson(const Common::Register& reg) noexcept

@@ -1,7 +1,12 @@
 
 #include "core/session/manager.hpp"
 #include "core/context.hpp"
+#include "core/session/base.hpp"
 #include "type.hpp"
+#include <cstddef>
+#include <functional>
+#include <memory>
+#include <optional>
 
 namespace Raptor::Core::Server {
 
@@ -174,4 +179,43 @@ void SessionManager::onSessionCreateFailed(const std::string& serverId) noexcept
     Context::get().logs().warn(Db::LogCategory::Session, "SESSION_CREATE_FAILED",
         "invalid address", "", serverId);
 }
+
+
+    SessionsDetailsList SessionManager::getSessionsDetails() const noexcept{
+        std::shared_lock lock(mutex_);
+        SessionsDetailsList list;
+        list.reserve(sessions_.size());
+        for (const auto& [id, base] : sessions_) {
+            SessionDetails details;
+            const auto& reg = base->getRegistrationInfo();
+            details.id = base->id();
+            details.protocol= base->type();
+            details.status= base->status();
+            details.idleSeconds= base->idleSeconds();
+            details.connectedAt= base->connectedAt();
+            details.remoteAddress   = base->getAddressStr();
+            details.hostname= reg.hostname;
+            details.username= reg.username;
+            details.shell= reg.shell;
+            details.homeDir= reg.homeDir;
+            details.isAdmin= reg.isAdmin;
+            details.isSudoer = reg.isSudoer;
+            details.isDocker= reg.isDocker;
+            details.isVm = reg.isVM;
+            details.isDomainJoined  = reg.isDomainJoined;
+            details.os= reg.os;
+            details.arch= reg.arch;
+            details.pid = reg.pid;
+            details.processPath= reg.processPath;
+            details.processName= reg.processName;
+            details.timezone= reg.timezone;
+            details.locale= reg.locale;
+            details.domain = reg.locale;
+            details.internalIp= reg.internalIp;
+            details.macAddress= reg.macAddress;
+            details.dns= reg.dnsServer;
+            list.push_back(std::move(details));
+        }
+        return list;
+    }
 } // namespace Raptor::Core::Server

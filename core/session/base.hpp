@@ -216,7 +216,7 @@ namespace Raptor::Core::Session {
             return information;
         }
         private:
-        uint64_t                      id_;
+        uint64_t id_;
         Common::Types::ServerType     type_;
         Status   status_;
         Common::Types::TimePoint      connectedAt_;  ///< Set once at construction, never changes.

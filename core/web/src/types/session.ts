@@ -19,3 +19,32 @@ export interface BriefSession {
   hostname: string;
   timezone: string;
 }
+
+export interface SessionDetails {
+  arch: string;
+  connectedAtNs: number;
+  dns: string;
+  domain: string;
+  homeDir: string;
+  hostname: string;
+  id: number;
+  idleSeconds: number;
+  internalIp: string;
+  isAdmin: boolean;
+  isDocker: boolean;
+  isDomainJoined: boolean;
+  isSudoer: boolean;
+  isVm: boolean;
+  locale: boolean;
+  macAddress: string;
+  os: OSKey;
+  pid: number;
+  processName: string;
+  processPath: string;
+  protocol: ServerType;
+  remoteAddress: string;
+  shell: string;
+  status: SessionStatus;
+  timezone: string;
+  username: string;
+}
