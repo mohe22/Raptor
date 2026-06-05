@@ -6,6 +6,7 @@
 #include "core/servers/tcp/tcp.hpp"
 #include "core/servers/udp/udp.hpp"
 #include <expected>
+#include <print>
 
 namespace Raptor::Core::Servers {
 
@@ -208,7 +209,6 @@ namespace Raptor::Core::Servers {
             uint64_t rx{}, tx{};
             server->getRxBytes(rx);
             server->getTxBytes(tx);
-
             const bool running = (status == ServerStatus::Running);
 
             pool.runningServerCount += running ? 1 : 0;

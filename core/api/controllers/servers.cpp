@@ -2,6 +2,7 @@
 #include "core/api/utils.hpp"
 #include "core/context.hpp"
 #include "type.hpp"
+#include <print>
 
 void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
     try {

@@ -3,7 +3,6 @@ import type {
   CreateServerPayload,
   getAllServersResponse,
   ServerDetail,
-  ServerInfo,
   ServerPoolStatus,
 } from "../../types/server";
 
