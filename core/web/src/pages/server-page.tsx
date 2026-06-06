@@ -59,6 +59,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../components/ui/collapsible";
+import { ServerLogs } from "../components/shared/server-logs";
 
 type Tab = "Overview" | "Session" | "Logs";
 
@@ -72,6 +73,7 @@ export function ServerPage() {
   const { serverId } = useParams<{ serverId: string }>();
   const { data, isLoading, error } = useGetServerById(serverId);
   console.log(data);
+
   const [tab, setTab] = useState<Tab>("Overview");
   const [trafficHistory, setTrafficHistory] = useState<TrafficPoint[]>([]);
   const [lastRx, setLastRx] = useState(0);
@@ -557,9 +559,10 @@ export function ServerPage() {
           </div>
         )}
         {tab === "Logs" && (
-          <div className="h-96 flex items-center justify-center text-zinc-500">
-            Logs coming soon
-          </div>
+          <ServerLogs
+            serverLogs={data.serverLogs}
+            sessionLogs={data.sessionLogs}
+          />
         )}
       </div>
     </>

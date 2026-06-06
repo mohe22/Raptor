@@ -22,8 +22,8 @@ export const SERVER_QUERY_KEYS = {
   poolStatus: ["servers", "pool-status"] as const,
 } as const;
 
-const REFRESH_INTERVAL_MS = 2 * 60 * 1000; // 2 min
-const REFRESH_INTERVAL_MAX_MS = 5 * 60 * 1000; // 5 min
+const REFRESH_INTERVAL_MS = 2 * 60 * 1000;
+const REFRESH_INTERVAL_MAX_MS = 5 * 60 * 1000;
 
 export const useGetAllServers = () =>
   useQuery({
@@ -40,6 +40,7 @@ export const usePoolStatus = () =>
     refetchInterval: REFRESH_INTERVAL_MS,
     staleTime: REFRESH_INTERVAL_MS,
   });
+
 export const usePauseServer = () => {
   const qc = useQueryClient();
   return useMutation({
@@ -61,6 +62,14 @@ export const usePauseServer = () => {
               s.name === name ? { ...s, status: "paused" } : s,
             ),
           };
+        },
+      );
+      qc.setQueriesData(
+        { queryKey: ["servers"], exact: false },
+        (old: ServerInfo | undefined) => {
+          if (!old || !("config" in old)) return old;
+          if (old.config.instanceName !== name) return old;
+          return { ...old, status: "paused" };
         },
       );
     },
@@ -88,6 +97,14 @@ export const useResumeServer = () => {
               s.name === name ? { ...s, status: "running" } : s,
             ),
           };
+        },
+      );
+      qc.setQueriesData(
+        { queryKey: ["servers"], exact: false },
+        (old: ServerInfo | undefined) => {
+          if (!old || !("config" in old)) return old;
+          if (old.config.instanceName !== name) return old;
+          return { ...old, status: "running" };
         },
       );
     },
@@ -127,8 +144,6 @@ export const useCreateServer = () => {
   return useMutation({
     mutationFn: (payload: CreateServerPayload) => createServer(payload),
     onSuccess: (_, payload) => {
-      // Invalidate rather than optimistically patch  we don't have the full
-      // ServerInfo shape (uptimeSeconds, rxBytes, etc.) client-side yet.
       qc.invalidateQueries({ queryKey: SERVER_QUERY_KEYS.all });
       qc.setQueryData(
         SERVER_QUERY_KEYS.poolStatus,
@@ -162,23 +177,16 @@ export const useUpdateServer = () => {
   return useMutation({
     mutationFn: (payload: UpdateServerPayload) => updateServer(payload),
     onSuccess: (_, payload) => {
-      // Patch all-servers list: update the matching entry by originalName
       qc.setQueryData(SERVER_QUERY_KEYS.all, (old: ServerInfo[] = []) =>
         old.map((s) =>
           s.config.instanceName === payload.name
             ? {
                 ...s,
-                config: {
-                  ...s.config,
-                  ip: payload.ip,
-                  port: payload.port,
-                },
+                config: { ...s.config, ip: payload.ip, port: payload.port },
               }
             : s,
         ),
       );
-
-      // Patch pool status: update the matching server entry
       qc.setQueryData(
         SERVER_QUERY_KEYS.poolStatus,
         (old: ServerPoolStatus | undefined) => {
@@ -192,8 +200,8 @@ export const useUpdateServer = () => {
                     name: payload.name,
                     ipAddress: payload.ip,
                     port: payload.port,
-                    status: "running" as const, // server restarts on update
-                    sessionCount: 0, // sessions are dropped on restart
+                    status: "running" as const,
+                    sessionCount: 0,
                   }
                 : s,
             ),
@@ -203,9 +211,12 @@ export const useUpdateServer = () => {
     },
   });
 };
+
 export const useGetServerById = (id: string) =>
   useQuery({
     queryKey: SERVER_QUERY_KEYS.byId(id),
     queryFn: () => getServerById(id),
     enabled: !!id,
+    refetchInterval: REFRESH_INTERVAL_MS,
+    staleTime: 0,
   });

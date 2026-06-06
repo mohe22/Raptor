@@ -95,14 +95,6 @@ namespace Raptor::Core::Servers {
         }
         owned->stop();
         owned->join();
-
-        Context::get().logs().info(
-            Db::LogCategory::Server,
-            "SERVER_STOP",
-            std::format("[{}] server stopped", name),
-            "",
-            name
-        );
         return true;
     }
 
