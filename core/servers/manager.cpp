@@ -227,17 +227,12 @@ namespace Raptor::Core::Servers {
         return pool;
     }
 
-    std::expected<void, std::string> Manager::updateServer(
-        const std::string& name,
-        const uint16_t     port,
-        const std::string& ip)
-    {
+    std::expected<void, std::string> Manager::updateServer(const std::string& name,const uint16_t port,const std::string& ip){
         Common::Types::ServerType type;
-        ServerConfig              newConfig;
-        std::unique_ptr<Base>     owned;
+        ServerConfig newConfig;
 
         {
-            std::unique_lock lock(mutex_);
+            std::shared_lock lock(mutex_);
 
             auto it = servers_.find(name);
             if (it == servers_.end())
@@ -245,8 +240,8 @@ namespace Raptor::Core::Servers {
 
             const ServerConfig& current = it->second->config();
 
-            newConfig        = current;
-            newConfig.port   = port;
+            newConfig = current;
+            newConfig.port = port;
             strncpy(newConfig.ip, ip.c_str(), sizeof(newConfig.ip) - 1);
             newConfig.ip[sizeof(newConfig.ip) - 1] = '\0';
             newConfig.ipType = Core::Api::Utils::detectIpType(ip);
@@ -254,14 +249,51 @@ namespace Raptor::Core::Servers {
             if (!ServerConfig::isValid(newConfig))
                 return std::unexpected{"invalid config!"};
 
-            type  = it->second->type();
-            owned = std::move(it->second);
-            servers_.erase(it);
+            type = it->second->type();
         }
 
-        owned->stop();
-        owned->join();
-        owned.reset();
+        // Build and start the new server before touching the old one
+        std::unique_ptr<Base> newServer;
+        switch (type) {
+            case Common::Types::ServerType::TCP:
+                newServer = std::make_unique<TcpServer>(newConfig);
+                break;
+            case Common::Types::ServerType::UDP:
+                newServer = std::make_unique<UdpServer>(newConfig);
+                break;
+            default:
+                return std::unexpected{"Unsupported server type!"};
+        }
+
+        if (!newServer->start()) {
+            Context::get().logs().error(
+                Db::LogCategory::Server,
+                "SERVER_UPDATED",
+                std::format("[{}] Faild to update server {}",newServer->config().instanceName ,newServer->getErrorMsg()),
+                newConfig.toJsonStr(),
+                name
+            );
+            return std::unexpected{
+                std::format("Failed to start updated server: {}", newServer->getErrorMsg())
+            };
+        }
+
+
+        {
+            std::unique_lock lock(mutex_);
+
+            auto it = servers_.find(name);
+            // if the server was removed while we starting the new server (edge case)
+            if (it == servers_.end()) {
+                newServer->stop();
+                newServer->join();
+                return std::unexpected{"server was removed during update!"};
+            }
+            // now the newServer holde the old server, which when eixt the function
+            // it will get destroyed
+            it->second.swap(newServer);
+        }
+
 
         Context::get().logs().info(
             Db::LogCategory::Server,
@@ -271,7 +303,7 @@ namespace Raptor::Core::Servers {
             name
         );
 
-        return createServer(type, newConfig);
+        return {};
     }
 
     std::optional<ServerInfo> Manager::getServerInfo(const std::string& name) const noexcept {

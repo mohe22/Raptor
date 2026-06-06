@@ -3,6 +3,7 @@
 #include "core/session/base.hpp"
 #include "libs/net/include/address.hpp"
 #include <cstdint>
+#include <print>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
@@ -19,15 +20,30 @@ namespace Raptor::Core::Server {
      * Gets populated from Session::Base.
      */
     struct BriefSessionInfo {
-        uint64_t    id;            /// Unique session id.
-        Common::Types::ServerType protocol;  /// Protocol type (TCP, UDP, etc.).
-        Session::Status status;    /// Current lifecycle status.
-        uint64_t    idleSeconds;   /// Seconds since last received data.
-        std::string remoteAddress; /// Remote ip:port as a human-readable string.
-        std::string hostname;      /// Agent hostname.
-        std::string username;      /// Agent username.
-        std::string os;            /// Agent operating system.
-        std::string timezone;      /// Agent timezone.
+        uint64_t    id;
+        Common::Types::ServerType protocol;
+        Session::Status status;
+        uint64_t    idleSeconds;
+        std::string remoteAddress;
+        std::string hostname;
+        std::string username;
+        std::string os;
+        std::string timezone;
+
+        BriefSessionInfo() = default;
+
+        BriefSessionInfo(uint64_t id, Common::Types::ServerType protocol, Session::Status status,
+                         uint64_t idleSeconds, std::string remoteAddress, std::string hostname,
+                         std::string username, std::string os, std::string timezone)
+            : id(id), protocol(protocol), status(status), idleSeconds(idleSeconds),
+              remoteAddress(std::move(remoteAddress)), hostname(std::move(hostname)),
+              username(std::move(username)), os(std::move(os)), timezone(std::move(timezone)) {}
+
+        BriefSessionInfo(const BriefSessionInfo& other) {
+            std::println("[BriefSessionInfo] COPIED");
+            *this = other;
+        }
+        BriefSessionInfo& operator=(const BriefSessionInfo& other) = default;
     };
 
     using SessionsInfoList = std::vector<BriefSessionInfo>;

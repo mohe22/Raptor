@@ -79,6 +79,7 @@ export function ServerPage() {
   const [lastRx, setLastRx] = useState(0);
   const [lastTx, setLastTx] = useState(0);
 
+  // TODO: get the tx,rx counters from the socket
   useEffect(() => {
     if (!data) return;
 

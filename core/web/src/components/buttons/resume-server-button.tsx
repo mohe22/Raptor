@@ -4,7 +4,6 @@ import { useResumeServer } from "../../features/servers/queries";
 
 export function ResumeServerButton({ name }: { name: string }) {
   const { mutate, isPending, error } = useResumeServer();
-  console.log(isPending, error);
   return (
     <ConfirmActionDialog
       title="Resume server?"

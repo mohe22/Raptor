@@ -207,8 +207,13 @@ namespace Raptor::Core::Servers {
         /**
          * @brief Updates the IP or port of an existing server.
          *
-         * Performs a full stop → destroy → recreate cycle.
-         * All active sessions are dropped and the port is released and re-bound.
+         * Builds and starts a new server with the updated config before touching the
+         * existing one. Only if the new server starts successfully, the old server is
+         * swapped out of the map and shut down cleanly. If the new server fails to
+         * start, the existing server remains running and untouched.
+         *
+         * All active sessions on the old server are dropped and the old port is
+         * released after the swap.
          *
          * @param name  Instance name of the server to update.
          * @param port  New listening port (1–65535).
@@ -218,6 +223,7 @@ namespace Raptor::Core::Servers {
         std::expected<void, std::string> updateServer(const std::string& name,
                                                       const uint16_t     port,
                                                       const std::string& ip);
+
         std::optional<ServerInfo> getServerInfo(const std::string& name) const noexcept;
         private:
         /// Owns all server instances  key is instance name.
