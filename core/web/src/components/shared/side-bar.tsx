@@ -79,7 +79,7 @@ function ServerAgents({
         return (
           <Link
             key={agent.id}
-            to={`/agent/${agent.connectedTo}/${agent.id}`}
+            to={`/server/${agent.connectedTo}/${agent.id}`}
             className={cn(
               "flex items-center gap-3 px-2 py-1 font-mono text-[11px] transition-all ",
               selectedAgentId === String(agent.id)

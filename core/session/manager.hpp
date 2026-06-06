@@ -30,20 +30,6 @@ namespace Raptor::Core::Server {
         std::string os;
         std::string timezone;
 
-        BriefSessionInfo() = default;
-
-        BriefSessionInfo(uint64_t id, Common::Types::ServerType protocol, Session::Status status,
-                         uint64_t idleSeconds, std::string remoteAddress, std::string hostname,
-                         std::string username, std::string os, std::string timezone)
-            : id(id), protocol(protocol), status(status), idleSeconds(idleSeconds),
-              remoteAddress(std::move(remoteAddress)), hostname(std::move(hostname)),
-              username(std::move(username)), os(std::move(os)), timezone(std::move(timezone)) {}
-
-        BriefSessionInfo(const BriefSessionInfo& other) {
-            std::println("[BriefSessionInfo] COPIED");
-            *this = other;
-        }
-        BriefSessionInfo& operator=(const BriefSessionInfo& other) = default;
     };
 
     using SessionsInfoList = std::vector<BriefSessionInfo>;

@@ -1,11 +1,13 @@
 #pragma once
-#include "core/db/logRepository.hpp"
-#include "register.hpp"
 #include <drogon/utils/Utilities.h>
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <json/json.h>
+
+#include "core/session/base.hpp"
+#include "core/db/logRepository.hpp"
 #include "libs/net/include/types.hpp"
+
 namespace Raptor::Core::Api::Utils {
     std::string base64UrlEncode(const unsigned char* data, size_t len) noexcept;
     std::string base64UrlDecode(const std::string& in) noexcept;
@@ -22,4 +24,6 @@ namespace Raptor::Core::Api::Utils {
     Json::Value ToMiscJson(const Common::Register& reg) noexcept;
     Json::Value ConvertToJson(const Common::Register& reg) noexcept;
     Json::Value ToLogEntryJson(const std::vector<Db::LogEntry>&) noexcept;
+
+    Json::Value sessionToJson(const Raptor::Core::Session::Base& s, const std::string& serverName) noexcept ;
 } // namespace Raptor::Utils

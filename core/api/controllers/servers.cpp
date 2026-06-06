@@ -3,6 +3,7 @@
 #include "core/context.hpp"
 #include "core/session/manager.hpp"
 #include "type.hpp"
+#include <drogon/HttpTypes.h>
 
 void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
     try {
@@ -137,7 +138,7 @@ void Server::getServerById(const HttpRequestPtr& req,std::function<void(const Ht
         Json::Value sessionsArray(Json::arrayValue);
         for (const auto& session : sessionsLists) {
             Json::Value sessionJson;
-            sessionJson["id"] = static_cast<Json::UInt64>(session.id);
+            sessionJson["id"] = std::to_string(session.id);
             sessionJson["protocol"] = Raptor::Common::Types::ToString(session.protocol);
             sessionJson["status"] = static_cast<int>(session.status); // or convert to string
             sessionJson["idleSeconds"] = static_cast<Json::UInt64>(session.idleSeconds);

@@ -20,31 +20,37 @@ export interface BriefSession {
   timezone: string;
 }
 
-export interface SessionDetails {
+export interface SessionDetails extends BriefSession {
   arch: string;
-  connectedAtNs: number;
-  dns: string;
   domain: string;
   homeDir: string;
-  hostname: string;
-  id: number;
-  idleSeconds: number;
-  internalIp: string;
-  isAdmin: boolean;
-  isDocker: boolean;
-  isDomainJoined: boolean;
+  shell: string;
   isSudoer: boolean;
-  isVm: boolean;
-  locale: boolean;
-  macAddress: string;
-  os: OSKey;
+  isAdmin: boolean;
+  osVersion: string;
+  kernelVersion: string;
+  cpu: string;
+  cpuCores: number;
+  ramBytes: number;
+  diskTotalBytes: number;
+  diskFreeBytes: number;
   pid: number;
   processName: string;
   processPath: string;
-  protocol: ServerType;
-  remoteAddress: string;
-  shell: string;
-  status: SessionStatus;
-  timezone: string;
-  username: string;
+  uptimeSystem: number;
+  uptimeSeconds: number;
+  isDocker: boolean;
+  isVM: boolean;
+  vmType: string;
+  internalIp: string;
+  internalIp2: string;
+  macAddress: string;
+  defaultGateway: string;
+  dnsServer: string;
+  isProxy: boolean;
+  proxyUrl: string;
+  isDomainJoined: boolean;
+  selinuxEnabled: boolean;
+  apparmorEnabled: boolean;
+  locale: string;
 }

@@ -14,7 +14,7 @@ import type {
   ServerPoolStatus,
   UpdateServerPayload,
 } from "../../types/server";
-import { updateServer } from "../session/api";
+import { api } from "../../lib/api";
 
 export const SERVER_QUERY_KEYS = {
   all: ["servers"] as const,
@@ -211,6 +211,12 @@ export const useUpdateServer = () => {
     },
   });
 };
+
+export const updateServer = async (payload: UpdateServerPayload) =>
+  await api<{ success: boolean; message: string }>("/server/update", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 
 export const useGetServerById = (id: string) =>
   useQuery({

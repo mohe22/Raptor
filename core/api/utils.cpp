@@ -1,6 +1,7 @@
 
 
 #include "core/api/utils.hpp"
+#include <print>
 
 namespace Raptor::Core::Api::Utils {
      std::string base64UrlEncode(const unsigned char* data, size_t len) noexcept {
@@ -17,6 +18,62 @@ namespace Raptor::Core::Api::Utils {
         std::replace(out.begin(), out.end(), '_', '/');
         while (out.size() % 4) out += '=';
         return drogon::utils::base64Decode(out);
+    }
+    Json::Value sessionToJson(const Raptor::Core::Session::Base& s, const std::string& serverName) noexcept {
+        Json::Value item;
+        std::println("user id: {}",s.id());
+        item["id"] =  std::to_string(s.id());
+        item["protocol"] = Raptor::Common::Types::ToString(s.type());
+        item["status"]  = Raptor::Core::Session::ToString(s.status());
+        item["idleSeconds"] = static_cast<Json::UInt64>(s.idleSeconds());
+        item["uptimeSeconds"]= static_cast<Json::UInt64>(s.uptimeSeconds());
+        item["remoteAddress"] = s.getAddressStr();
+        item["connectedTo"]= serverName;
+
+        const auto& r = s.getRegistrationInfo();
+
+        item["hostname"]= r.hostname;
+        item["username"]= r.username;
+        item["homeDir"]= r.homeDir;
+        item["shell"] = r.shell;
+        item["isAdmin"] = r.isAdmin;
+        item["isSudoer"] = r.isSudoer;
+        item["domain"] = r.domain;
+
+        item["os"] = r.os;
+        item["osVersion"] = r.osVersion;
+        item["kernelVersion"] = r.kernelVersion;
+        item["arch"] = r.arch;
+        item["cpu"]= r.cpu;
+        item["cpuCores"] = static_cast<Json::UInt>(r.cpuCores);
+        item["ramBytes"]  = static_cast<Json::UInt64>(r.ramBytes);
+        item["diskTotalBytes"]= static_cast<Json::UInt64>(r.diskTotalBytes);
+        item["diskFreeBytes"] = static_cast<Json::UInt64>(r.diskFreeBytes);
+        item["pid"] = static_cast<Json::UInt>(r.pid);
+        item["processPath"]   = r.processPath;
+        item["processName"]   = r.processName;
+        item["uptimeSystem"]  = static_cast<Json::UInt64>(r.uptimeSeconds);
+
+        item["isDocker"] = r.isDocker;
+        item["isVM"] = r.isVM;
+        item["vmType"] = r.vmType;
+
+        item["internalIp"] = r.internalIp;
+        item["internalIp2"] = r.internalIp2;
+        item["macAddress"] = r.macAddress;
+        item["defaultGateway"]  = r.defaultGateway;
+        item["dnsServer"]  = r.dnsServer;
+        item["isProxy"]  = r.isProxy;
+        item["proxyUrl"] = r.proxyUrl;
+        item["isDomainJoined"]  = r.isDomainJoined;
+
+        item["selinuxEnabled"]  = r.selinuxEnabled;
+        item["apparmorEnabled"] = r.apparmorEnabled;
+
+        item["timezone"]  = r.timezone;
+        item["locale"]  = r.locale;
+
+        return item;
     }
 
     std::string hmacSha256Base64Url(const std::string& data, const std::string& secret) noexcept{
