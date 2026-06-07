@@ -55,8 +55,17 @@ void Auth::login(const HttpRequestPtr &req,
 
 void Auth::me(const HttpRequestPtr &req,
               std::function<void(const HttpResponsePtr &)> &&callback) {
-    std::string userId = req->getAttributes()->get<std::string>("userId");
-    Json::Value result;
-    result["userId"] = userId;
-    callback(HttpResponse::newHttpJsonResponse(result));
+    try {
+        auto attrs = req->getAttributes();
+        Json::Value result;
+        result["userId"] = attrs->get<std::string>("userId");
+        callback(HttpResponse::newHttpJsonResponse(result));
+    } catch (const std::exception& e) {
+        LOG_ERROR << "me() error: " << e.what();
+        Json::Value err;
+        err["message"] = "Internal error";
+        auto resp = HttpResponse::newHttpJsonResponse(err);
+        resp->setStatusCode(k500InternalServerError);
+        callback(resp);
+    }
 }

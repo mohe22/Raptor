@@ -1,6 +1,5 @@
 #pragma once
 #include <drogon/HttpFilter.h>
-
 using namespace drogon;
 
 class AuthFilter : public HttpFilter<AuthFilter>

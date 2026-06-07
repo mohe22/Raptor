@@ -1,8 +1,10 @@
 #include "AuthFilter.hpp"
 #include "core/api/utils.hpp"
 #include "core/config.hpp"
+#include <drogon/HttpFilter.h>
 
 void AuthFilter::doFilter(const HttpRequestPtr &req, FilterCallback &&fcb, FilterChainCallback &&fccb) {
+
     std::string token = req->getCookie("token");
     if (token.empty()) {
         Json::Value err;

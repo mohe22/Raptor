@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <array>
 #include <cstring>
 #include <print>
 #include <stdexcept>
@@ -118,7 +117,7 @@ namespace Raptor::Common {
         Flags           flags       = {};                   ///< Bitmask of Flags (no default None)
         uint64_t        payloadSize = 0;                    ///< Byte count of THIS chunk's body
 
-        static constexpr size_t SerializedSize =
+        static constexpr size_t SIZE =
             sizeof(PacketId)  +   // 4  — packetId
             sizeof(uint8_t)   +   // 1  — type
             sizeof(uint8_t)   +   // 1  — direction
@@ -148,8 +147,8 @@ namespace Raptor::Common {
          * @brief Serializes the header into a fixed-size byte array.
          * Fields are written in the wire layout order shown above.
          */
-        std::array<uint8_t, SerializedSize> serialize() const noexcept {
-            std::array<uint8_t, SerializedSize> buf{};
+        std::array<uint8_t, SIZE> serialize() const noexcept {
+            std::array<uint8_t, SIZE> buf{};
             size_t o = 0;
 
             auto write = [&]<typename V>(V v) {
@@ -171,7 +170,7 @@ namespace Raptor::Common {
          * @throws std::runtime_error if size < SerializedSize.
          */
         static Header deserialize(const uint8_t* data, size_t size) {
-            if (size < SerializedSize)
+            if (size < SIZE)
                 throw std::runtime_error("Header too small");
 
             Header h{};

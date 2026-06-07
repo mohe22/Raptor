@@ -1,5 +1,5 @@
 #include "base.hpp"
-#include "header.hpp"
+#include "common/header.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
@@ -23,19 +23,18 @@ namespace Raptor::Common::Parsers{
 
             while (true) {
                 if (this->getState() == State::ReadingHeader) {
-                    if (this->buffer.size() < Header::SerializedSize) {
+                    if (this->buffer.size() < Header::SIZE) {
                         return;
                     }
                     header_ = Header::deserialize(
                         this->buffer.data(),
-                        Header::SerializedSize
+                        Header::SIZE
                     );
 
-                    this->buffer.consume(Header::SerializedSize);
+                    this->buffer.consume(Header::SIZE);
 
                     bodyReceived = 0; // reset body counter
 
-                    header_.print();
 
                     this->setState(State::ReadingBody);
                 }

@@ -138,25 +138,6 @@ const OS_CONFIGS = {
 
 export type OSKey = keyof typeof OS_CONFIGS;
 
-// Ordered match rules: checked top-to-bottom against lowercased os string.
-// More specific strings (e.g. "red hat") must come before broader ones ("linux").
-const OS_MATCH_RULES: Array<[pattern: string, key: OSKey]> = [
-  ["windows", "Windows"],
-  ["ubuntu", "Ubuntu"],
-  ["debian", "Debian"],
-  ["red hat", "Red Hat"],
-  ["redhat", "Red Hat"],
-  ["rhel", "Red Hat"],
-  ["centos", "CentOS"],
-  ["fedora", "Fedora"],
-  ["arch", "Arch"],
-  ["kali", "Kali"],
-  ["macos", "macOS"],
-  ["darwin", "macOS"],
-  ["osx", "macOS"],
-  ["linux", "Linux"],
-];
-
 export const sessionOSConfig: Record<OSKey, OSConfig> = OS_CONFIGS;
 
 /**
@@ -264,6 +245,7 @@ export const serverTypeConfig: Record<
   { label: string; color: string; icon: string }
 > = {
   HTTP: { label: "HTTP", color: "text-chart-1", icon: "globe" },
+  HTTPS: { label: "HTTP", color: "text-chart-1", icon: "globe" },
   TCP: { label: "TCP", color: "text-chart-3", icon: "radio" },
   DNS: { label: "DNS", color: "text-chart-5", icon: "server" },
   UDP: { label: "UDP", color: "text-chart-2", icon: "shield" },

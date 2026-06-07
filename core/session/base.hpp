@@ -166,8 +166,11 @@ namespace Raptor::Core::Session {
          * @return  Idle duration in whole seconds.
          */
         uint64_t idleSeconds() const noexcept {
-            return std::chrono::duration_cast<std::chrono::seconds>(
-                Common::Types::Clock::now() - lastActive_).count();
+            return static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    Common::Types::Clock::now() - lastActive_
+                ).count()
+            );
         }
 
         /**
@@ -178,11 +181,12 @@ namespace Raptor::Core::Session {
          * @return  Uptime duration in whole seconds.
          */
         uint64_t uptimeSeconds() const noexcept {
-            return std::chrono::duration_cast<std::chrono::seconds>(
-                Common::Types::Clock::now() - connectedAt_).count();
-        }
-
-        /**
+            return static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    Common::Types::Clock::now() - connectedAt_
+                ).count()
+            );
+        }        /**
          * @brief Prints a one-line summary of this session to stdout.
          *
          * Includes id, protocol type, status, idle time, and uptime.

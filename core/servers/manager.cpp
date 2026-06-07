@@ -292,6 +292,10 @@ namespace Raptor::Core::Servers {
             it->second.swap(newServer);
         }
 
+        // newServer now holds the OLD server must stop it before destroying
+        newServer->stop();
+        newServer->join();
+
 
         Context::get().logs().info(
             Db::LogCategory::Server,

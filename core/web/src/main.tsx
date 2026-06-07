@@ -35,6 +35,11 @@ ReactDOM.createRoot(root).render(
               path="/server/:serverId/:sessionId"
               element={<SessionPage />}
             />
+
+            <Route
+              path="/servers/:serverId/sessions/:sessionId/:tab"
+              element={<SessionPage />}
+            />
           </Route>
         </Routes>
         <Toaster duration={5000} />

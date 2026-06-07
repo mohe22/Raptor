@@ -6,12 +6,13 @@
 #include "core/config.hpp"
 
 namespace Raptor::Core::Api {
-
     inline void init() {
+
         static const std::vector<std::string> allowedOrigins(
             Config::ALLOWED_ORIGINS,
             Config::ALLOWED_ORIGINS + Config::ALLOWED_ORIGINS_COUNT
         );
+
         drogon::app().registerSyncAdvice(
             [](const drogon::HttpRequestPtr& req) -> drogon::HttpResponsePtr {
                 if (req->method() != drogon::Options)
@@ -55,15 +56,14 @@ namespace Raptor::Core::Api {
                                 "Content-Type, Authorization, X-Requested-With");
                 resp->addHeader("Vary", "Origin");
             });
+
         auto notFound = drogon::HttpResponse::newHttpResponse();
         notFound->setStatusCode(drogon::k404NotFound);
         notFound->setBody("Not Found");
         drogon::app().setCustom404Page(notFound);
-
         drogon::app().addListener(Config::BACKEND_IP, Config::BACKEND_PORT);
-
-
     }
+
     inline void run() {
         drogon::app()
             .setThreadNum(Config::BACKEND_THREADS)
@@ -72,6 +72,4 @@ namespace Raptor::Core::Api {
                   : trantor::Logger::kFatal)
             .run();
     }
-
-
 }

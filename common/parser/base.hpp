@@ -1,7 +1,7 @@
 #pragma once
 #include <cstddef>
-#include "buffer.hpp"
-#include "header.hpp"
+#include "common/buffer.hpp"
+#include "common/header.hpp"
 
 namespace Raptor::Common::Parsers {
 
@@ -35,7 +35,7 @@ namespace Raptor::Common::Parsers {
         State  state_ {State::ReadingHeader};
         protected:
 
-        virtual void onRegister(const Common::Header& h, std::string_view body) noexcept = 0;
+        virtual void onRegister(const Common::Header& h, std::string_view body) noexcept {};
         virtual void onCommand(const Common::Header& h, std::string_view body) noexcept = 0;
         virtual void onUpload(const Common::Header& h, std::string_view body) noexcept = 0;
         virtual void onDownload(const Common::Header& h, std::string_view body) noexcept = 0;

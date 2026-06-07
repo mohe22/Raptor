@@ -116,8 +116,8 @@ namespace Raptor::Common {
         const T* writePtr() const noexcept { return buff_.data() + wOff_; }
         T* writePtr()       noexcept { return buff_.data() + wOff_; }
 
-        const size_t getReadOffset() const noexcept { return rOff_; }
-        const size_t getWriteOffset() const noexcept { return wOff_; }
+        size_t getReadOffset() const noexcept { return rOff_; }
+        size_t getWriteOffset() const noexcept { return wOff_; }
     private:
         std::array<T, N> buff_;
         std::size_t      rOff_{0}; // read cursor   next byte to consume
