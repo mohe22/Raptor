@@ -100,8 +100,8 @@ namespace Raptor::Core::Servers {
         EpollManager(EpollManager&&)                 = delete;
         EpollManager& operator=(EpollManager&&)      = delete;
 
-        EpollManager()  = default;
-        ~EpollManager() = default;
+        EpollManager()= default;
+        ~EpollManager()= default;
 
         /**
          * @brief Initializes the epoll watcher.
@@ -158,7 +158,7 @@ namespace Raptor::Core::Servers {
          */
         void close() noexcept {
             watcher_.close();
-            watcher_ = Net::Poll::Watcher{};
+            // watcher_ = Net::Poll::Watcher{};
         }
 
         /**

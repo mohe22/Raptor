@@ -69,10 +69,10 @@ namespace Raptor::Core::Session {
         }
 
         std::string getAddressStr() const noexcept override {
-            auto ipRes = connection_->getIp();
+            auto ipRes = connection_->getAddress().getIp();
             if (!ipRes) return "";
 
-            auto portRes = connection_->getPort();
+            auto portRes = connection_->getAddress().getPort();
             if (!portRes) return "";
 
             return std::format("{}:{}", ipRes.value().data(), portRes.value());

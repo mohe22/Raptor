@@ -186,24 +186,8 @@ namespace Raptor::Core::Session {
                     Common::Types::Clock::now() - connectedAt_
                 ).count()
             );
-        }        /**
-         * @brief Prints a one-line summary of this session to stdout.
-         *
-         * Includes id, protocol type, status, idle time, and uptime.
-         *
-         * @code
-         *   manager.forEach([](Session::Base* s) { s->print(); });
-         * @endcode
-         */
-        void print() const noexcept {
-            std::println("Session {{ id={} type={} status={} idle={}s uptime={}s }}",
-                id_,
-                ToString(type_),
-                ToString(status_),
-                idleSeconds(),
-                uptimeSeconds()
-            );
         }
+
         const std::string& connectedTo() const noexcept {
             return connectedTo_;
         }
