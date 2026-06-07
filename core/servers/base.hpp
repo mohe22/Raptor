@@ -158,7 +158,6 @@ namespace Raptor::Core::Servers {
          */
         void close() noexcept {
             watcher_.close();
-            // watcher_ = Net::Poll::Watcher{};
         }
 
         /**
