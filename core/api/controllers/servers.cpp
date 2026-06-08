@@ -5,7 +5,7 @@
 #include "type.hpp"
 #include <drogon/HttpTypes.h>
 
-void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback) {
+void Server::getPoolStatus(const HttpRequestPtr&, std::function<void(const HttpResponsePtr&)>&& callback) {
     try {
         auto& servers = Raptor::Core::Context::get().servers();
         const auto& logs = Raptor::Core::Context::get().logs();
@@ -76,7 +76,7 @@ void Server::getPoolStatus(const HttpRequestPtr& req, std::function<void(const H
 
 
 
-void Server::getServerById(const HttpRequestPtr& req,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& id){
+void Server::getServerById(const HttpRequestPtr&,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& id){
     try {
         auto& servers = Raptor::Core::Context::get().servers();
         auto& logs    = Raptor::Core::Context::get().logs();
@@ -199,7 +199,7 @@ void Server::getServerById(const HttpRequestPtr& req,std::function<void(const Ht
 
 
 
-void Server::getServers( const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback){
+void Server::getServers( const HttpRequestPtr&, std::function<void(const HttpResponsePtr&)>&& callback){
     try {
         auto& servers = Raptor::Core::Context::get().servers();
         const Raptor::Core::Servers::ServersInfoList& serversInfo = servers.getServersInfo();
@@ -253,7 +253,7 @@ void Server::getServers( const HttpRequestPtr& req, std::function<void(const Htt
 
 
 
-void Server::pauseServer(const HttpRequestPtr& req,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& serverName) {
+void Server::pauseServer(const HttpRequestPtr& ,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& serverName) {
     try {
         auto& servers = Raptor::Core::Context::get().servers();
         bool success = servers.pauseServer(serverName);
@@ -290,7 +290,7 @@ void Server::pauseServer(const HttpRequestPtr& req,std::function<void(const Http
     }
 }
 
-void Server::resumeServer(const HttpRequestPtr& req,std::function<void(const HttpResponsePtr&)>&& callback, const std::string& serverName){
+void Server::resumeServer(const HttpRequestPtr& ,std::function<void(const HttpResponsePtr&)>&& callback, const std::string& serverName){
     try {
 
         auto& servers = Raptor::Core::Context::get().servers();

@@ -2,9 +2,11 @@
 #pragma once
 
 #include "base.hpp"
+#include "header.hpp"
 #include "libs/net/include/address.hpp"
 namespace Raptor::Core::Session {
-    class UdpSession : public Base {
+    class UdpSession :
+    public Base {
         public:
         UdpSession(Net::Address address, uint64_t id,const std::string& connected)
         : Base(id, Common::Types::ServerType::UDP,connected)
@@ -24,9 +26,9 @@ namespace Raptor::Core::Session {
         }
 
 
-        // void onCommand(const Common::Header& h, std::string_view body) noexcept override{};
-        // void onUpload(const Common::Header& h, std::string_view body) noexcept override {};
-        // void onDownload(const Common::Header& h, std::string_view body) noexcept override {};
+        // void onCommand(const Common::Header& , std::string_view body) noexcept override{};
+        // void onUpload(const Common::Header& , std::string_view body) noexcept override {};
+        // void onDownload(const Common::Header& , std::string_view body) noexcept override {};
 
         // void onRegister(const Common::Header& h, std::string_view body) noexcept override {
 

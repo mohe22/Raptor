@@ -8,7 +8,7 @@
 
 
 
-void Sessions::getSessionForServer(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback, const std::string& serverName) {
+void Sessions::getSessionForServer(const HttpRequestPtr& , std::function<void(const HttpResponsePtr&)>&& callback, const std::string& serverName) {
     try {
         const auto& servers = Raptor::Core::Context::get().servers();
         const Raptor::Core::Server::SessionManager* sessionManager = servers.getSessionManager(serverName);
@@ -59,7 +59,7 @@ void Sessions::getSessionForServer(const HttpRequestPtr& req, std::function<void
     }
 }
 
-void Sessions::getSessionById(const HttpRequestPtr& req, std::function<void(const HttpResponsePtr&)>&& callback, const std::string& serverName, const std::string& sessionId) {
+void Sessions::getSessionById(const HttpRequestPtr&, std::function<void(const HttpResponsePtr&)>&& callback, const std::string& serverName, const std::string& sessionId) {
     try {
         uint64_t id;
         try {

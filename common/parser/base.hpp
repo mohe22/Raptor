@@ -35,10 +35,10 @@ namespace Raptor::Common::Parsers {
         State  state_ {State::ReadingHeader};
         protected:
 
-        virtual void onRegister(const Common::Header& h, std::string_view body) noexcept {};
-        virtual void onCommand(const Common::Header& h, std::string_view body) noexcept = 0;
-        virtual void onUpload(const Common::Header& h, std::string_view body) noexcept = 0;
-        virtual void onDownload(const Common::Header& h, std::string_view body) noexcept = 0;
+        virtual void onRegister(const Common::Header& , std::string_view ) noexcept {};
+        virtual void onCommand(const Common::Header& , std::string_view) noexcept = 0;
+        virtual void onUpload(const Common::Header& , std::string_view ) noexcept = 0;
+        virtual void onDownload(const Common::Header& , std::string_view ) noexcept = 0;
 
     };
 

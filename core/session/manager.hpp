@@ -29,6 +29,14 @@ namespace Raptor::Core::Server {
         std::string username;
         std::string os;
         std::string timezone;
+        BriefSessionInfo(uint64_t id_, Common::Types::ServerType protocol_,
+                           Session::Status status_, uint64_t idleSeconds_,
+                           std::string remoteAddress_, std::string hostname_,
+                           std::string username_, std::string os_, std::string timezone_)
+              : id(id_), protocol(protocol_), status(status_), idleSeconds(idleSeconds_),
+                remoteAddress(std::move(remoteAddress_)), hostname(std::move(hostname_)),
+                username(std::move(username_)), os(std::move(os_)), timezone(std::move(timezone_))
+          {}
 
     };
 
@@ -77,7 +85,54 @@ namespace Raptor::Core::Server {
         SessionDetails(SessionDetails&&)= default;
         SessionDetails& operator=(SessionDetails&&)= default;
 
-        SessionDetails() = default;
+        SessionDetails(
+            uint64_t id_,
+            Common::Types::ServerType protocol_,
+            Session::Status status_,
+            uint64_t idleSeconds_,
+            Common::Types::TimePoint connectedAt_,
+            std::string remoteAddress_,
+            std::string hostname_,
+            std::string username_,
+            std::string shell_,
+            std::string homeDir_,
+            bool isAdmin_,
+            bool isSudoer_,
+            bool isDocker_,
+            bool isVm_,
+            bool isDomainJoined_,
+            std::string os_,
+            std::string arch_,
+            uint32_t pid_,
+            std::string processPath_,
+            std::string processName_,
+            std::string timezone_,
+            std::string locale_,
+            std::string domain_,
+            std::string internalIp_,
+            std::string macAddress_,
+            std::string dns_
+        )
+            : id(id_), protocol(protocol_), status(status_), idleSeconds(idleSeconds_)
+            , connectedAt(connectedAt_)
+            , remoteAddress(std::move(remoteAddress_))
+            , hostname(std::move(hostname_))
+            , username(std::move(username_))
+            , shell(std::move(shell_))
+            , homeDir(std::move(homeDir_))
+            , isAdmin(isAdmin_), isSudoer(isSudoer_), isDocker(isDocker_)
+            , isVm(isVm_), isDomainJoined(isDomainJoined_)
+            , os(std::move(os_)), arch(std::move(arch_))
+            , pid(pid_)
+            , processPath(std::move(processPath_))
+            , processName(std::move(processName_))
+            , timezone(std::move(timezone_))
+            , locale(std::move(locale_))
+            , domain(std::move(domain_))
+            , internalIp(std::move(internalIp_))
+            , macAddress(std::move(macAddress_))
+            , dns(std::move(dns_))
+        {}
     };
     using SessionsDetailsList = std::vector<SessionDetails>;
     /**

@@ -209,7 +209,7 @@ namespace Raptor::Core::Servers {
             pool.totalSessionCount  += sessionCount;
             pool.activeSessionCount += running ? sessionCount : 0;
 
-            pool.servers.push_back(ServerEntry{
+            pool.servers.emplace_back(ServerEntry{
                 .name    = config.instanceName,
                 .ipAddress = config.ip,
                 .port = config.port,

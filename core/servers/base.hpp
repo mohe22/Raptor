@@ -307,7 +307,7 @@ namespace Raptor::Core::Servers {
         const std::string getErrorMsgStr() const noexcept {
             return std::string(error.message);
         }
-        const int getErrorCode() const noexcept {
+        int getErrorCode() const noexcept {
             return error.code;
         }
 
@@ -352,8 +352,12 @@ namespace Raptor::Core::Servers {
         [[nodiscard]] Common::Types::Clock::duration uptime() const noexcept {
             return Common::Types::Clock::now() - startTime_;
         }
+
+
+
+
         [[nodiscard]] uint64_t uptimeSeconds() const noexcept {
-            return std::chrono::duration_cast<std::chrono::seconds>(uptime()).count();
+            return Common::toSeconds(startTime_);
         }
         /**
          * @brief Updates the server runtime state.
@@ -401,7 +405,7 @@ namespace Raptor::Core::Servers {
 
            void getRxBytes(uint64_t& n) const noexcept { n = rxBytes_.load(std::memory_order_relaxed); }
            void getTxBytes(uint64_t& n) const noexcept { n = txBytes_.load(std::memory_order_relaxed); }
-           const Common::Types::ServerType type() const noexcept { return type_; }
+           Common::Types::ServerType type() const noexcept { return type_; }
            Server::SessionManager sessionManager;
     protected:
 

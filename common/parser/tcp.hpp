@@ -19,7 +19,7 @@ namespace Raptor::Common::Parsers{
             if (!this->buffer.canWrite(len)) {
                  this->buffer.compact();
              };
-            size_t written = this->buffer.write(data, len);
+            this->buffer.write(data, len);
 
             while (true) {
                 if (this->getState() == State::ReadingHeader) {
@@ -73,8 +73,10 @@ namespace Raptor::Common::Parsers{
 
                     size_t consumed = this->buffer.consume(toConsume);
                     bodyReceived += consumed;
-                    if (bodyReceived >= header_.payloadSize)
+                    if (bodyReceived >= header_.payloadSize) {
                         reset();
+                        continue;
+                    }
 
                     return;
                 }
@@ -86,8 +88,6 @@ namespace Raptor::Common::Parsers{
         void reset() noexcept override {
             bodyReceived = 0;
             this->setState(State::ReadingHeader);
-            this->buffer.clear();
-
         }
     };
 }

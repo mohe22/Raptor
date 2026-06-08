@@ -58,12 +58,12 @@ struct LogEntry {
 };
 
 struct LogFilter {
-    std::optional<LogLevel>    level;
-    std::optional<LogCategory> category;
-    std::optional<std::string> serverId;
-    std::optional<std::string> event;
-    std::optional<int64_t>     from;
-    std::optional<int64_t>     to;
+    std::optional<LogLevel>    level{};
+    std::optional<LogCategory> category{};
+    std::optional<std::string> serverId{};
+    std::optional<std::string> event{};
+    std::optional<int64_t>     from{};
+    std::optional<int64_t>     to{};
     int limit  = 50;
     int offset = 0;
 

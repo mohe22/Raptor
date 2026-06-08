@@ -4,8 +4,10 @@
 
 #include <arpa/inet.h>
 #include <array>
+#include <cerrno>
 #include <chrono>
 #include <cstddef>
+#include <cstring>
 #include <netinet/in.h>
 #include <print>
 #include <sys/epoll.h>
@@ -18,6 +20,7 @@
 #include "./utils.hpp"
 #include "common/header.hpp"
 #include "common/parser/tcp.hpp"
+#include "libs/net/include/epoll.hpp"
 #include "pips.hpp"
 #include "common/register.hpp"
 constexpr uint32_t READ_FLAGS  = EPOLLIN  | EPOLLET | EPOLLONESHOT | EPOLLRDHUP;
@@ -128,8 +131,36 @@ class Agent : public Common::Parsers::TcpParser<uint8_t, sizeof(Common::Register
               }
               registerAgent();
 
-              std::this_thread::sleep_for(std::chrono::seconds(30));
               return true;
+          }
+      }
+
+      int run(){
+          for(;;){
+              int n = epoll_wait(epollfd,epollEvents,MAX_EVENTS,-1);
+              if(n == 0) std::println("timeout");
+              if(n < 0){
+                  if(errno == EINTR) continue;
+                  throw std::runtime_error(std::format("epoll_wait: {}", strerror(errno)));
+              }
+              for(int i{0};i<n;++i){
+                  const epoll_event& ev = epollEvents[i];
+                  if (ev.events & (EPOLLERR | EPOLLHUP)) {
+                      int err{0};
+                      socklen_t len = sizeof(err);
+                      getsockopt(ev.data.fd, SOL_SOCKET, SO_ERROR, &err, &len);
+                      std::println("fd {} , error: {}",ev.data.fd,std::strerror(err) );
+                      epoll_ctl(epollfd, EPOLL_CTL_DEL, ev.data.fd,nullptr);
+                      close(ev.data.fd);
+                      continue;
+                  }
+                  // Read
+                  if (ev.events & EPOLLIN) {
+                    if (ev.data.fd == clientfd)
+                        readClient();
+                  }
+
+            }
           }
       }
 private:
@@ -143,6 +174,8 @@ private:
     static constexpr int MAX_EVENTS = 12;
     epoll_event epollEvents[MAX_EVENTS]{};
 
+
+    std::array<uint8_t, sizeof(Common::Register)> tmpBuffer ;
     int epollfd,clientfd;
 
     void rearm(int fd, uint32_t flags) noexcept {
@@ -195,15 +228,41 @@ private:
     }
 
 
+    void readClient() noexcept {
+        while (true) {
+            const ssize_t bytes = read(clientfd,tmpBuffer.data(), tmpBuffer.size());
+            std::println("read from socket: {}",bytes);
+            if(bytes == 0) connect(); // client closed reconnect
+            if(bytes < 0){
+                // no more data.
+                if (errno == EAGAIN || errno == EWOULDBLOCK) break;
+                // interrupt it try again.
+                if (errno == EINTR) continue;
+                // if error happend just re connect again
+                connect();
+                return;
+            }
 
-     void onCommand(const Common::Header&, std::string_view)  noexcept override {}
+            feed(tmpBuffer.data(), bytes);
+
+        }
+    }
+
+
+     void onCommand(const Common::Header& header, std::string_view command)  noexcept override {
+         header.print();
+         std::println("command : {}",command);
+     }
+
      void onUpload(const Common::Header&, std::string_view)   noexcept override {}
      void onDownload(const Common::Header&, std::string_view) noexcept override {}
+
 
 
 };
 
 int main(){
     Agent a("127.0.0.1",8080);
+    a.run();
 
 }

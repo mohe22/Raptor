@@ -79,7 +79,7 @@ SessionsInfoList SessionManager::getSessionsInfo() const {
     data.reserve(sessions_.size());
     for (const auto& [id, session] : sessions_) {
         const auto& reg = session->getRegistrationInfo();
-        data.emplace_back(BriefSessionInfo{
+        data.emplace_back(
             id,
             session->type(),
             session->status(),
@@ -89,7 +89,7 @@ SessionsInfoList SessionManager::getSessionsInfo() const {
             reg.username,
             reg.os,
             reg.timezone
-        });
+        );
     }
     return data;
 }
@@ -110,108 +110,109 @@ void SessionManager::stopMonitor() {
 void SessionManager::monitorLoop() {
     while (running_) {
         std::vector<uint64_t> toRemove;
-        {
-            std::shared_lock lock(mutex_);
-            for (const auto& [id, session] : sessions_) {
-                const auto  idle     = session->idleSeconds();
-                const auto& serverId = session->connectedTo();
+    {
+        std::shared_lock lock(mutex_);
+        for (const auto& [id, session] : sessions_) {
+            const auto  idle     = session->idleSeconds();
+            const auto& serverId = session->connectedTo();
 
-                if (session->isDisconnected()) {
-                    Context::get().logs().info(Db::LogCategory::Session, "SESSION_EXPIRED",
-                        std::format("id={} addr={} proto={} uptime={}s",
-                            id, session->getAddressStr(),
-                            Common::Types::ToString(session->type()),
-                            session->uptimeSeconds()),
-                        "", serverId);
-                    toRemove.push_back(id);
-                    continue;
-                }
+            if (session->isDisconnected()) {
+                Context::get().logs().info(Db::LogCategory::Session, "SESSION_EXPIRED",
+                    std::format("id={} addr={} proto={} uptime={}s",
+                        id, session->getAddressStr(),
+                        Common::Types::ToString(session->type()),
+                        session->uptimeSeconds()),
+                    "", serverId);
+                toRemove.push_back(id);
+                continue;
+            }
 
-                if (idle >= Config::TIMEOUT_SECONDS) {
-                    Context::get().logs().warn(Db::LogCategory::Session, "SESSION_TIMEOUT",
-                        std::format("id={} addr={} proto={} idle={}s timeout={}s",
-                            id, session->getAddressStr(),
-                            Common::Types::ToString(session->type()),
-                            idle, Config::TIMEOUT_SECONDS),
-                        "", serverId);
-                    session->setStatus(Session::Status::Disconnected);
-                    toRemove.push_back(id);
-                    continue;
-                }
+            if (idle >= Config::TIMEOUT_SECONDS) {
+                Context::get().logs().warn(Db::LogCategory::Session, "SESSION_TIMEOUT",
+                    std::format("id={} addr={} proto={} idle={}s timeout={}s",
+                        id, session->getAddressStr(),
+                        Common::Types::ToString(session->type()),
+                        idle, Config::TIMEOUT_SECONDS),
+                    "", serverId);
+                session->setStatus(Session::Status::Disconnected);
+                toRemove.push_back(id);
+                continue;
+            }
 
-                if (idle >= Config::IDLE_SECONDS && session->isConnected()) {
-                    Context::get().logs().debug(Db::LogCategory::Session, "SESSION_IDLE",
-                        std::format("id={} addr={} proto={} idle={}s",
-                            id, session->getAddressStr(),
-                            Common::Types::ToString(session->type()),
-                            idle),
-                        "", serverId);
-                    session->setStatus(Session::Status::Idle);
-                }
+            if (idle >= Config::IDLE_SECONDS && session->isConnected()) {
+                Context::get().logs().debug(Db::LogCategory::Session, "SESSION_IDLE",
+                    std::format("id={} addr={} proto={} idle={}s",
+                        id, session->getAddressStr(),
+                        Common::Types::ToString(session->type()),
+                        idle),
+                    "", serverId);
+                session->setStatus(Session::Status::Idle);
             }
         }
+    }
 
-        if (!toRemove.empty()) {
-            std::unique_lock lock(mutex_);
-            for (const auto id : toRemove)
-                sessions_.erase(id);
-        }
+    if (!toRemove.empty()) {
+        std::unique_lock lock(mutex_);
+        for (const auto id : toRemove)
+        sessions_.erase(id);
+    }
 
-        std::shared_lock lock(mutex_);
-        cv_.wait_for(lock, std::chrono::minutes(1), [this] { return !running_; });
+    std::shared_lock lock(mutex_);
+    cv_.wait_for(lock, std::chrono::minutes(1), [this] { return !running_; });
     }
 }
 
 
 void SessionManager::onSessionCreated(const uint64_t id, const std::string& address,
-                                       const Common::Types::ServerType type,
-                                       const std::string& serverId) noexcept {
-    Context::get().logs().info(Db::LogCategory::Session, "SESSION_CREATED",
-        std::format("id={} addr={} protocol={}", id, address, Common::Types::ToString(type)),
-        "", serverId);
-}
+    const Common::Types::ServerType type,
+    const std::string& serverId) noexcept {
+        Context::get().logs().info(Db::LogCategory::Session, "SESSION_CREATED",
+            std::format("id={} addr={} protocol={}", id, address, Common::Types::ToString(type)),
+            "", serverId);
+    }
 
-void SessionManager::onSessionCreateFailed(const std::string& serverId) noexcept {
-    Context::get().logs().warn(Db::LogCategory::Session, "SESSION_CREATE_FAILED",
-        "invalid address", "", serverId);
-}
+    void SessionManager::onSessionCreateFailed(const std::string& serverId) noexcept {
+        Context::get().logs().warn(Db::LogCategory::Session, "SESSION_CREATE_FAILED",
+            "invalid address", "", serverId);
+    }
 
 
-    SessionsDetailsList SessionManager::getSessionsDetails() const noexcept{
+    SessionsDetailsList SessionManager::getSessionsDetails() const noexcept {
         std::shared_lock lock(mutex_);
         SessionsDetailsList list;
         list.reserve(sessions_.size());
         for (const auto& [id, base] : sessions_) {
-            SessionDetails details;
             const auto& reg = base->getRegistrationInfo();
-            details.id = base->id();
-            details.protocol= base->type();
-            details.status= base->status();
-            details.idleSeconds= base->idleSeconds();
-            details.connectedAt= base->connectedAt();
-            details.remoteAddress   = base->getAddressStr();
-            details.hostname= reg.hostname;
-            details.username= reg.username;
-            details.shell= reg.shell;
-            details.homeDir= reg.homeDir;
-            details.isAdmin= reg.isAdmin;
-            details.isSudoer = reg.isSudoer;
-            details.isDocker= reg.isDocker;
-            details.isVm = reg.isVM;
-            details.isDomainJoined  = reg.isDomainJoined;
-            details.os= reg.os;
-            details.arch= reg.arch;
-            details.pid = reg.pid;
-            details.processPath= reg.processPath;
-            details.processName= reg.processName;
-            details.timezone= reg.timezone;
-            details.locale= reg.locale;
-            details.domain = reg.locale;
-            details.internalIp= reg.internalIp;
-            details.macAddress= reg.macAddress;
-            details.dns= reg.dnsServer;
-            list.push_back(std::move(details));
+            list.emplace_back(
+                base->id(),
+                base->type(),
+                base->status(),
+                base->idleSeconds(),
+                base->connectedAt(),
+                base->getAddressStr(),
+                reg.hostname,
+                reg.username,
+                reg.shell,
+                reg.homeDir,
+                reg.isAdmin,
+                reg.isSudoer,
+                reg.isDocker,
+                reg.isVM,
+                reg.isDomainJoined,
+                reg.os,
+                reg.arch,
+                reg.pid,
+                reg.processPath,
+                reg.processName,
+                reg.timezone,
+                reg.locale,
+                reg.domain,
+                reg.internalIp,
+                reg.macAddress,
+                reg.dnsServer
+            );
         }
         return list;
     }
+
 } // namespace Raptor::Core::Server

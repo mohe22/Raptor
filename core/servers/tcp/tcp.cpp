@@ -86,22 +86,20 @@ namespace Raptor::Core::Servers {
     }
 
     void TcpServer::onWrite(Session::TcpSession* client) noexcept {
-        Net::Result<size_t> r{0};
-
-        while (true) {
-            r = callbacks_.response(client);
-            if (!r || r.value() == 0) break;
-        }
-
+        auto r = callbacks_.response(client);
         if (!r) {
             if (r.error() == Net::Error::WouldBlock) {
-                rearmClient(client); // buffer full, retry on next EPOLLOUT
+                rearmClient(client);
                 return;
             }
             closeClient(client, r.error());
             return;
         }
-        addTxBytes(r.value());
+
+        if (r.value() > 0) {
+            addTxBytes(r.value());
+        }
+
         rearmClient(client);
     }
 

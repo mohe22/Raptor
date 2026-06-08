@@ -1,9 +1,11 @@
 #pragma once
 
 #include "core/session/queue.hpp"
+#include "core/session/task/task.hpp"
 #include "libs/net/include/types.hpp"
 #include "register.hpp"
 #include "type.hpp"
+#include "utils.hpp"
 #include <string>
 
 namespace Raptor::Core::Session {
@@ -24,7 +26,7 @@ namespace Raptor::Core::Session {
         Disconnected,   ///< Socket closed — session should be removed
     };
 
-    static const char* ToString(Status s) noexcept {
+    inline const char* ToString(Status s) noexcept {
         switch (s) {
             case Status::Connected:     return "Connected";
             case Status::Idle:          return "Idle";
@@ -70,7 +72,7 @@ namespace Raptor::Core::Session {
          * @param len  Maximum bytes to read.
          * @return     Bytes read, or an error.
          */
-        virtual Net::Result<size_t> read(void* buf, size_t len) noexcept
+        virtual Net::Result<size_t> read(void*, size_t) noexcept
             { return Net::Result<size_t>(0); }
 
         /**
@@ -82,7 +84,7 @@ namespace Raptor::Core::Session {
          * @param len  Number of bytes to write.
          * @return     Bytes written, or an error.
          */
-        virtual Net::Result<size_t> write(const void* buf, size_t len) noexcept
+        virtual Net::Result<size_t> write(const void*, size_t) noexcept
             { return Net::Result<size_t>(0); }
 
         /**
@@ -106,7 +108,7 @@ namespace Raptor::Core::Session {
         /**
          * @brief Returns the protocol type of this session (TCP, UDP, etc.).
          */
-        const Common::Types::ServerType type() const noexcept { return type_; }
+         Common::Types::ServerType type() const noexcept { return type_; }
 
         /**
          * @brief Returns the current lifecycle status.
@@ -122,9 +124,9 @@ namespace Raptor::Core::Session {
          */
         void setStatus(Status s) noexcept { status_ = s; }
 
-        const void setRegistrationInfo(const Common::Register& r) noexcept {
+         void setRegistrationInfo(const Common::Register& r) noexcept {
                information = r;
-            }
+        }
 
         /** @brief Returns true if the session is actively connected. */
         bool isConnected()     const noexcept { return status_ == Status::Connected;     }
@@ -165,14 +167,8 @@ namespace Raptor::Core::Session {
          *
          * @return  Idle duration in whole seconds.
          */
-        uint64_t idleSeconds() const noexcept {
-            return static_cast<uint64_t>(
-                std::chrono::duration_cast<std::chrono::seconds>(
-                    Common::Types::Clock::now() - lastActive_
-                ).count()
-            );
-        }
 
+        [[nodiscard]] uint64_t idleSeconds()   const noexcept { return Common::toSeconds(lastActive_);  }
         /**
          * @brief Returns seconds elapsed since the session was created.
          *
@@ -180,13 +176,8 @@ namespace Raptor::Core::Session {
          *
          * @return  Uptime duration in whole seconds.
          */
-        uint64_t uptimeSeconds() const noexcept {
-            return static_cast<uint64_t>(
-                std::chrono::duration_cast<std::chrono::seconds>(
-                    Common::Types::Clock::now() - connectedAt_
-                ).count()
-            );
-        }
+
+        [[nodiscard]] uint64_t uptimeSeconds() const noexcept { return Common::toSeconds(connectedAt_); }
 
         const std::string& connectedTo() const noexcept {
             return connectedTo_;
@@ -198,18 +189,21 @@ namespace Raptor::Core::Session {
          * without dropping pending writes.
          */
         bool hasPendingWrites() const noexcept {
-            return !sendQueue_.empty();
+            return !sendQ_.empty();
         }
         const Common::Register& getRegistrationInfo() const noexcept {
             return information;
         }
+        protected:
+
+        Queue::SendQueue<Tasks::Task> sendQ_;
         private:
         uint64_t id_;
         Common::Types::ServerType     type_;
         Status   status_;
         Common::Types::TimePoint      connectedAt_;  ///< Set once at construction, never changes.
         Common::Types::TimePoint      lastActive_;   ///< Updated on every successful read via touch().
-        Queue::SendQueue<std::string> sendQueue_;
+
         Common::Register information;
         std::string connectedTo_;
     };
