@@ -142,7 +142,23 @@ namespace Raptor::Common {
         bool isSuccess() const { return hasFlag(Flags::Success); }
         bool isLastChunk() const { return hasFlag(Flags::LastChunk); }
         bool isMetadata() const { return hasFlag(Flags::Metadata); }
+        void serialize(uint8_t* buffer, size_t len) const noexcept {
+            if (len < SIZE || buffer == nullptr)
+                return;
 
+            size_t o = 0;
+
+            auto write = [&]<typename V>(V v) {
+                std::memcpy(buffer + o, &v, sizeof(V));
+                o += sizeof(V);
+            };
+
+            write(packetId);
+            write(static_cast<uint8_t>(type));
+            write(static_cast<uint8_t>(direction));
+            write(static_cast<uint8_t>(flags));
+            write(payloadSize);
+        }
         /**
          * @brief Serializes the header into a fixed-size byte array.
          * Fields are written in the wire layout order shown above.

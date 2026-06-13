@@ -30,8 +30,10 @@ namespace Raptor::Common::Parsers{
                         this->buffer.data(),
                         Header::SIZE
                     );
-
                     this->buffer.consume(Header::SIZE);
+
+
+                    // header_.print();
 
                     bodyReceived = 0; // reset body counter
 
