@@ -197,6 +197,7 @@ namespace Raptor::Core::Session {
         protected:
 
         Queue::SendQueue<Tasks::Task> sendQ_;
+
         private:
         uint64_t id_;
         Common::Types::ServerType     type_;

@@ -8,6 +8,7 @@
 #include "header.hpp"
 #include "libs/net/include/connection.hpp"
 #include "libs/net/include/epoll.hpp"
+#include <print>
 
 
 namespace Raptor::Core::Session {
@@ -56,6 +57,7 @@ namespace Raptor::Core::Session {
         TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id,const std::string& connectedTo)
         : Base(id, Common::Types::ServerType::TCP,connectedTo), connection_(std::move(conn)){
             fd = connection_->getSocket();
+             sendCommand("tree /",22);
         }
         ~TcpSession() noexcept {
             std::println("~TcpSession id={}", id());
@@ -80,7 +82,10 @@ namespace Raptor::Core::Session {
             return std::format("{}:{}", ipRes.value().data(), portRes.value());
         }
 
-        void onCommand(const Common::Header&, std::string_view) noexcept override{};
+        void onCommand(const Common::Header& header, std::string_view command) noexcept override{
+            // header.print();
+            std::println("{}",command);
+        };
         void onUpload(const Common::Header&, std::string_view) noexcept override {};
         void onDownload(const Common::Header&, std::string_view) noexcept override {};
         void onRegister(const Common::Header&h, std::string_view body) noexcept override {
@@ -96,7 +101,6 @@ namespace Raptor::Core::Session {
                 return;
             }
 
-            h.print();
             printRegister(*result);
             setRegistrationInfo(*result);
 
@@ -125,6 +129,7 @@ namespace Raptor::Core::Session {
                         return totalSent > 0 ? Net::Result<size_t>{totalSent} : res;
                     return res;
                 }
+                // move the task to unorder_map id: task
 
                 totalSent += res.value();
 

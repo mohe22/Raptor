@@ -18,8 +18,6 @@ namespace Raptor::Core::Servers::Tcp::Handlers {
             session->feed(buf.data(), r.value());
             totalRead += r.value();
         }
-
-        session->sendCommand("ls",22);
         return totalRead;
     }
 

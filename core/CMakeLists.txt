@@ -46,26 +46,20 @@ set_target_properties(net PROPERTIES
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(SQLITE3 sqlite3)
 if(NOT SQLITE3_FOUND)
-  message(FATAL_ERROR
-    "\n[ERROR] sqlite3 not found!"
-    "\n  Run:  cmake --build build/debug --target setup"
-    "\n  Or manually:"
-    "\n    Ubuntu/Debian: sudo apt install libsqlite3-dev"
-    "\n    Arch:          sudo pacman -S sqlite"
-    "\n    Fedora:        sudo dnf install sqlite-devel\n")
+  message(FATAL_ERROR "\n[ERROR] sqlite3 not found!\n  Run:  cmake --build build/debug --target setup\n")
 endif()
 message(STATUS "Found sqlite3: ${SQLITE3_VERSION} — ${SQLITE3_LINK_LIBRARIES}")
 find_package(Drogon QUIET)
 if(NOT Drogon_FOUND)
-  message(FATAL_ERROR
-    "\n[ERROR] Drogon not found!"
-    "\n  Run:  cmake --build build/debug --target setup\n")
+  message(FATAL_ERROR "\n[ERROR] Drogon not found!\n  Run:  cmake --build build/debug --target setup\n")
 endif()
 message(STATUS "Found Drogon: ${Drogon_VERSION}")
 file(GLOB_RECURSE CORE_SOURCES   CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp")
 file(GLOB_RECURSE COMMON_SOURCES CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../common/*.cpp")
 list(FILTER CORE_SOURCES   EXCLUDE REGEX ".*/build/.*")
+list(FILTER CORE_SOURCES   EXCLUDE REGEX ".*/CMakeFiles/.*")
 list(FILTER COMMON_SOURCES EXCLUDE REGEX ".*/build/.*")
+list(FILTER COMMON_SOURCES EXCLUDE REGEX ".*/CMakeFiles/.*")
 add_executable(raptor ${CORE_SOURCES} ${COMMON_SOURCES})
 target_include_directories(raptor PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/..
