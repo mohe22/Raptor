@@ -153,8 +153,45 @@ namespace Raptor::Core::Server {
 
         SessionManager(const SessionManager&)            = delete;
         SessionManager& operator=(const SessionManager&) = delete;
-        SessionManager(SessionManager&&)                 = delete;
-        SessionManager& operator=(SessionManager&&)      = delete;
+        SessionManager(SessionManager&& other) noexcept {
+            std::println("move");
+            // Stop source thread so nobody is touching its sessions_
+            other.stopMonitor();
+
+            {
+                std::unique_lock lock(other.mutex_);
+                sessions_ = std::move(other.sessions_);
+            }
+
+            // mutex_, cv_ are freshly default-constructed — that's fine
+            // spin up our own monitor for the stolen sessions
+            running_ = true;
+            startMonitor();
+        }
+
+        SessionManager& operator=(SessionManager&& other) noexcept {
+            if (this == &other) return *this;
+
+            // Stop and drain ourselves first
+            stopMonitor();
+            {
+                std::unique_lock lock(mutex_);
+                sessions_.clear();
+            }
+
+            // Stop source
+            other.stopMonitor();
+            {
+                std::unique_lock lockOther(other.mutex_);
+                std::unique_lock lockSelf(mutex_);
+                sessions_ = std::move(other.sessions_);
+            }
+
+            running_ = true;
+            startMonitor();
+
+            return *this;
+        };
 
         /**
          * @brief Takes ownership of a session and registers it.

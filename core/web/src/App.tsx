@@ -209,9 +209,10 @@ function ServerCard({ server }: { server: ServerEntry }) {
 
 function App() {
   const { data, isLoading } = usePoolStatus();
+
+  // NOW check loading
   if (!data || isLoading) return <DashboardSkeleton />;
 
-  // todo the ICON animation run only if data updated.
   return (
     <>
       <Header title="Dashboard" subtitle="Command & Control Overview" />

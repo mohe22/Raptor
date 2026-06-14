@@ -5,6 +5,7 @@
 #include "core/servers/base.hpp"
 #include "core/servers/tcp/tcp.hpp"
 #include "core/servers/udp/udp.hpp"
+#include <optional>
 
 namespace Raptor::Core::Servers {
 

@@ -3,7 +3,10 @@
 #include <openssl/hmac.h>
 #include <openssl/evp.h>
 #include <json/json.h>
+#include <vector>
 
+#include "core/api/controllers/socket.hpp"
+#include "core/servers/manager.hpp"
 #include "core/session/base.hpp"
 #include "core/db/logRepository.hpp"
 #include "libs/net/include/types.hpp"
@@ -26,4 +29,14 @@ namespace Raptor::Core::Api::Utils {
     Json::Value ToLogEntryJson(const std::vector<Db::LogEntry>&) noexcept;
 
     Json::Value sessionToJson(const Raptor::Core::Session::Base& s, const std::string& serverName) noexcept ;
+
+
+    Json::Value ToPoolStatusJson(const Raptor::Core::Servers::ServerPoolStatus& pool,
+        const std::vector<Raptor::Core::Db::LogEntry>& serverLogs,
+        const std::vector<Raptor::Core::Db::LogEntry>& sessionLogs
+    ) noexcept;
+
+    inline bool isValidWsCmd(uint8_t v) {
+        return v < static_cast<uint8_t>(WsCmd::Unknown);
+    }
 } // namespace Raptor::Utils

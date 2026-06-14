@@ -4,6 +4,7 @@
 #include "type.hpp"
 #include <cstdint>
 #include <expected>
+#include <optional>
 #include <vector>
 
 namespace Raptor::Core::Servers {

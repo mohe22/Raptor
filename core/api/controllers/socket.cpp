@@ -1,114 +1,105 @@
 #include "core/api/controllers/socket.hpp"
-#include <cstring>
-#include <print>
-#include <string>
-#include <variant>
+#include "core/api/utils.hpp"
 
 namespace Raptor::Core::Api {
+    std::string WebSocket::buildFrame(WsCmd cmd,WsStatus status,const void* payload,uint64_t payloadLen){
+        constexpr std::size_t HEADER = 6;
+        std::string frame(HEADER + payloadLen, '\0');
+        frame[0] = static_cast<uint8_t>(cmd);
+        frame[1] = static_cast<uint8_t>(status);
+        // Encode payloadLen as 4 bytes big-endian (network byte order).
+        for (int i = 0; i < 4; ++i)
+            frame[2 + i] = static_cast<char>((payloadLen >> (24 - 8 * i)) & 0xFF);
 
-template <typename T>
-static std::string buildFrame(const WsResponse<T>& response,
-                               const void*          payload)
-{
-    constexpr std::size_t HEADER = 10;
-    std::string frame(HEADER + response.payloadLen, '\0');
+        if (payload && payloadLen > 0)
+            std::memcpy(frame.data() + HEADER, payload, payloadLen);
+        return frame;
+    }
+    void WebSocket::sendOk(const drogon::WebSocketConnectionPtr& conn,WsCmd cmd,const void* payload,uint64_t  payloadLen){
+        conn->send(buildFrame(cmd, WsStatus::Ok, payload, payloadLen), drogon::WebSocketMessageType::Binary);
+    }
+    void WebSocket::sendError(const drogon::WebSocketConnectionPtr& conn,WsCmd cmd,const std::string&reason){
+        conn->send(buildFrame(cmd, WsStatus::Error, reason.data(), reason.size()),
+            drogon::WebSocketMessageType::Binary);
+    }
+    void WebSocket::sendJsonOk(const drogon::WebSocketConnectionPtr& conn,WsCmd cmd,const Json::Value& data) noexcept
+        {
+            if (!conn || !conn->connected()) {
+                return;
+            }
 
-    frame[0] = static_cast<uint8_t>(response.command);
-    frame[1] = static_cast<uint8_t>(response.status);
+            Json::Value response;
+            response["command"] = static_cast<int>(cmd);
+            response["status"]  = static_cast<int>(WsStatus::Ok);
+            response["data"]    = data;
 
-    for (int i = 0; i < 8; ++i)
-        frame[2 + i] = static_cast<char>((response.payloadLen >> (56 - 8 * i)) & 0xFF);
+            std::string payload = response.toStyledString();
+            conn->send(payload, drogon::WebSocketMessageType::Text);
+        }
+    void WebSocket::handleNewConnection(const drogon::HttpRequestPtr& req,const drogon::WebSocketConnectionPtr& conn){
+        const std::string token = req->getCookie("token");
+        if (token.empty()) { conn->forceClose(); return; }
+        {
+            std::lock_guard lock(mutex_);
+            connection_ = conn;
+        }
+    }
+    void WebSocket::sendErrorJson(const drogon::WebSocketConnectionPtr& conn, WsCmd cmd, const std::string& reason) noexcept
+        {
+            if (!conn || !conn->connected()) return;
 
-    if (payload && response.payloadLen > 0)
-        std::memcpy(frame.data() + HEADER, payload, response.payloadLen);
+            Json::Value response;
+            response["command"] = static_cast<uint8_t>(cmd);
+            response["status"]  = static_cast<uint8_t>(WsStatus::Error);
+            response["error"]   = reason;
 
-    return frame;
-}
+            std::string payload = response.toStyledString();
+            conn->send(payload, drogon::WebSocketMessageType::Text);
+        }
+    void WebSocket::handleNewMessage(const drogon::WebSocketConnectionPtr& conn,std::string&& msg,const drogon::WebSocketMessageType& type){
 
-void WebSocket::handleNewConnection(const drogon::HttpRequestPtr&         req,
-                                    const drogon::WebSocketConnectionPtr& conn)
-{
-    const std::string token = req->getCookie("token");
-    if (token.empty()) { conn->forceClose(); return; }
-    std::println("socket token: {}", token);
+        if(type == drogon::WebSocketMessageType::Text){
+            Json::Value root;
+            Json::CharReaderBuilder readerBuilder;
+            std::string errs;
 
+            const std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
+
+            if (!reader->parse(msg.data(), msg.data() + msg.size(), &root, &errs)) {
+                sendError(conn, WsCmd::Error, "invalid json payload: " + errs);
+                return;
+            }
+
+            if (!root.isMember("command") || !root["command"].isUInt()) {
+                sendError(conn, WsCmd::Error, "missing or invalid 'cmd' field");
+                return;
+            }
+
+            const uint8_t cmdByte = static_cast<uint8_t>(root["command"].asUInt());
+
+            if (!Utils::isValidWsCmd(cmdByte)) {
+                sendError(conn, WsCmd::Error, std::format("unknown command: 0x{:02x}", cmdByte));
+                return;
+            }
+
+            const WsCmd cmd = static_cast<WsCmd>(cmdByte);
+
+            Json::Value data = root["data"].isObject() ? root["data"] : Json::Value(Json::objectValue);
+
+            switch (cmd) {
+                      default:
+                sendError(conn, cmd, std::format("unhandled command: 0x{:02x}", cmdByte));
+                break;
+            }
+        }
+
+
+    }
+    void WebSocket::handleConnectionClosed(const drogon::WebSocketConnectionPtr&)
     {
         std::lock_guard lock(mutex_);
-        connection_ = conn;
+        connection_ = nullptr;
+        std::println("[ws] client disconnected");
     }
-
-    WsResponse<std::monostate> response{
-        .command    = WsCmd::DashboardStatus,
-        .status     = WsStatus::Ok,
-        .payloadLen = token.size(),
-        .data       = {},
-        .error      = std::nullopt,
-    };
-
-    conn->send(buildFrame(response, token.data()), drogon::WebSocketMessageType::Binary);
-}
-
-void WebSocket::handleNewMessage(const drogon::WebSocketConnectionPtr& conn,
-                                 std::string&&                          msg,
-                                 const drogon::WebSocketMessageType&    type)
-{
-    if (type != drogon::WebSocketMessageType::Text) return;
-
-    WsResponse<std::monostate> response{
-        .command    = WsCmd::DashboardStatus,
-        .status     = WsStatus::Ok,
-        .payloadLen = msg.size(),
-        .data       = {},
-        .error      = std::nullopt,
-    };
-
-    conn->send(buildFrame(response, msg.data()), drogon::WebSocketMessageType::Binary);
-}
-
-void WebSocket::handleConnectionClosed(const drogon::WebSocketConnectionPtr&)
-{
-    std::lock_guard lock(mutex_);
-    connection_ = nullptr;
-}
-
-void WebSocket::sendServersStatus() noexcept
-{
-    std::lock_guard lock(mutex_);
-    if (!connection_) return;
-
-    const uint8_t placeholder[] = { 0x00, 0x00, 0x00, 0x00 };
-
-    WsResponse<std::monostate> response{
-        .command    = WsCmd::DashboardStatus,
-        .status     = WsStatus::Ok,
-        .payloadLen = sizeof(placeholder),
-        .data       = {},
-        .error      = std::nullopt,
-    };
-
-    try {
-        connection_->send(buildFrame(response, placeholder), drogon::WebSocketMessageType::Binary);
-    } catch (const std::exception& e) {
-        LOG_ERROR << e.what();
-    }
-}
-
-void WebSocket::dashboardStatus()
-{
-    std::lock_guard lock(mutex_);
-    if (!connection_) return;
-
-    const uint8_t payload[] = { 0xCA, 0xFE };
-
-    WsResponse<std::monostate> response{
-        .command    = WsCmd::DashboardStatus,
-        .status     = WsStatus::Ok,
-        .payloadLen = sizeof(payload),
-        .data       = {},
-        .error      = std::nullopt,
-    };
-
-    connection_->send(buildFrame(response, payload), drogon::WebSocketMessageType::Binary);
-}
 
 } // namespace Raptor::Core::Api

@@ -1,40 +1,56 @@
-export const WsCmd = Object.freeze({
-  DashboardStatus: 0,
+export const WsCmd = {
+  DashboardStatus: 0x00,
   Unknown: 0xff,
-});
+} as const;
 
-export const WsStatus = Object.freeze({
-  Ok: 0,
-  Error: 1,
-});
+export type WsCmd = (typeof WsCmd)[keyof typeof WsCmd];
 
-const WsCmdName = Object.fromEntries(
-  Object.entries(WsCmd).map(([k, v]) => [v, k]),
-);
-const WsStatusName = Object.fromEntries(
-  Object.entries(WsStatus).map(([k, v]) => [v, k]),
-);
+export const WsStatus = {
+  Ok: 0x00,
+  Error: 0x01,
+} as const;
 
-const HEADER_SIZE = 10;
+export type WsStatus = (typeof WsStatus)[keyof typeof WsStatus];
+
+const HEADER_SIZE = 6;
 const PAYLOAD_LEN_OFF = 2;
 
+interface WsFrame {
+  header: {
+    cmd: WsCmd;
+    status: WsStatus;
+    payloadLen: number;
+  };
+  payload: Uint8Array;
+}
+
+interface WsRequest {
+  command: WsCmd;
+  payload?: unknown;
+}
+
+interface WsJsonResponse {
+  command: WsCmd;
+  status: WsStatus;
+  data?: unknown;
+  error?: string;
+}
+
 export class RaptorWsClient {
-  url = "";
+  url: string;
+  #ws: WebSocket | null = null;
+  #handlers: Map<WsCmd, (frame: WsFrame | WsJsonResponse) => void> = new Map();
 
-  #ws = null;
-  #handlers = new Map();
-  #decoder = new TextDecoder("utf-8");
+  onOpen: (() => void) | null = null;
+  onClose: ((e: CloseEvent) => void) | null = null;
+  onError: ((e: Event) => void) | null = null;
+  onUnhandled: ((data: WsFrame | WsJsonResponse) => void) | null = null;
 
-  onOpen = null;
-  onClose = null;
-  onError = null;
-  onUnhandled = null;
-
-  constructor(url) {
+  constructor(url: string) {
     this.url = url;
   }
 
-  connect() {
+  connect(): void {
     if (this.#ws) this.disconnect();
     this.#ws = new WebSocket(this.url);
     this.#ws.binaryType = "arraybuffer";
@@ -44,76 +60,76 @@ export class RaptorWsClient {
     this.#ws.onmessage = (e) => this.#handleMessage(e);
   }
 
-  disconnect() {
+  disconnect(): void {
     this.#ws?.close();
     this.#ws = null;
   }
 
-  get connected() {
+  get connected(): boolean {
     return this.#ws?.readyState === WebSocket.OPEN;
   }
 
-  send(request) {
-    if (!this.connected) throw new Error("WebSocket is not connected");
-    this.#ws.send(JSON.stringify(request));
+  #sendJson(request: WsRequest): void {
+    if (!this.connected) {
+      throw new Error("WebSocket is not connected");
+    }
+    const jsonStr = JSON.stringify(request);
+
+    this.#ws!.send(jsonStr); // This should be Text
   }
 
-  requestDashboardStatus() {
-    this.send({ command: "DashboardStatus", payload: {} });
+  requestDashboardStatus(): void {
+    this.#sendJson({
+      command: WsCmd.DashboardStatus,
+    });
   }
 
-  on(cmd, handler) {
+  on(cmd: WsCmd, handler: (data: WsFrame | WsJsonResponse) => void): this {
     this.#handlers.set(cmd, handler);
     return this;
   }
 
-  off(cmd) {
+  off(cmd: WsCmd): this {
     this.#handlers.delete(cmd);
     return this;
   }
 
-  #handleMessage(event) {
-    if (!(event.data instanceof ArrayBuffer)) {
-      console.warn("[RaptorWs] unexpected text frame:", event.data);
+  #handleMessage(event: MessageEvent): void {
+    // Try to parse as binary frame first
+    if (event.data instanceof ArrayBuffer) {
+      const frame = this.#parseFrame(event.data);
+      if (frame) {
+        const handler = this.#handlers.get(frame.header.cmd);
+
+        if (handler) {
+          handler(frame);
+        } else {
+          this.onUnhandled?.(frame);
+        }
+      }
       return;
     }
 
-    const frame = this.#parseFrame(event.data);
-    if (!frame) return;
-
-    console.group("[RaptorWs] frame received");
-    console.log(
-      "cmd       :",
-      frame.header.cmd,
-      `(${WsCmdName[frame.header.cmd] ?? "unknown"})`,
-    );
-    console.log(
-      "status    :",
-      frame.header.status,
-      `(${WsStatusName[frame.header.status] ?? "unknown"})`,
-    );
-    console.log("payloadLen:", frame.header.payloadLen, "bytes");
-    console.log("payload   :", frame.payload);
-
-    if (
-      frame.header.cmd === WsCmd.DashboardStatus &&
-      frame.header.status === WsStatus.Ok
-    ) {
-      const token = this.#decoder.decode(frame.payload);
-      console.log("token     :", token);
+    // Try to parse as JSON
+    if (typeof event.data === "string") {
+      try {
+        const response = JSON.parse(event.data) as WsJsonResponse;
+        const handler = this.#handlers.get(response.command);
+        if (handler) {
+          handler(response);
+        } else {
+          this.onUnhandled?.(response);
+        }
+      } catch (err) {
+        console.warn("[RaptorWs] failed to parse message:", event.data, err);
+      }
+      return;
     }
 
-    console.groupEnd();
-
-    const handler = this.#handlers.get(frame.header.cmd);
-    if (handler) {
-      handler(frame);
-    } else {
-      this.onUnhandled?.(frame);
-    }
+    console.warn("[RaptorWs] unexpected message type:", typeof event.data);
   }
 
-  #parseFrame(buffer) {
+  #parseFrame(buffer: ArrayBuffer): WsFrame | null {
     if (buffer.byteLength < HEADER_SIZE) {
       console.error(
         `[RaptorWs] frame too short: ${buffer.byteLength} bytes (need ${HEADER_SIZE})`,
@@ -122,11 +138,10 @@ export class RaptorWsClient {
     }
 
     const view = new DataView(buffer);
-
     const header = {
-      cmd: view.getUint8(0),
-      status: view.getUint8(1),
-      payloadLen: Number(view.getBigUint64(PAYLOAD_LEN_OFF, false)),
+      cmd: view.getUint8(0) as WsCmd,
+      status: view.getUint8(1) as WsStatus,
+      payloadLen: view.getUint32(PAYLOAD_LEN_OFF, false),
     };
 
     const expectedTotal = HEADER_SIZE + header.payloadLen;
