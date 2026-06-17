@@ -1,12 +1,12 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { SocketContext } from "./socket-context";
-import { RaptorWsClient } from "../lib/socket";
+import { RaptorWsClient, WsCmd } from "../lib/socket";
+import { formatConnectionTime } from "../lib/utils";
 
 const WS_URL = import.meta.env.VITE_WS_URL ?? "ws://localhost:8000/ws";
 
 interface SocketProviderProps {
   children: ReactNode;
-  /** ms between reconnect attempts — default 3000 */
   reconnectDelay?: number;
 }
 
@@ -15,37 +15,49 @@ export function SocketProvider({
   reconnectDelay = 3000,
 }: SocketProviderProps) {
   const clientRef = useRef<RaptorWsClient | null>(null);
-
   const [client, setClient] = useState<RaptorWsClient | null>(null);
   const [connected, setConnected] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const unmountedRef = useRef(false);
+
   useEffect(() => {
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let unmounted = false;
+    unmountedRef.current = false;
 
     function createClient() {
       const ws = new RaptorWsClient(WS_URL);
       clientRef.current = ws;
 
       ws.onOpen = () => {
-        if (!unmounted) {
-          setClient(ws);
-          setConnected(true);
-        }
+        if (unmountedRef.current) return;
+        setClient(ws);
+        setConnected(true);
+        // Send a NewSession as soon as the socket is open so the server can
+        // associate this connection with a known client identity.
+        ws.newSession(generateClientId());
       };
+
       ws.onClose = () => {
-        if (!unmounted) {
-          setClient(null);
-          setConnected(false);
-          reconnectTimer = setTimeout(createClient, reconnectDelay);
-        }
+        if (unmountedRef.current) return;
+        setClient(null);
+        setConnected(false);
+        setSessionId(null);
+        reconnectTimerRef.current = setTimeout(createClient, reconnectDelay);
       };
+
       ws.onError = (e) => {
         console.error("[SocketProvider] WebSocket error:", e);
       };
 
-      ws.onUnhandled = (frame) => {
-        console.warn("[SocketProvider] unhandled frame:", frame);
+      ws.onUnhandled = (res) => {
+        console.warn("[SocketProvider] unhandled message:", res);
       };
+
+      // Store the sessionId returned by the server so downstream consumers
+      // can include it in subsequent requests.
+      ws.on(WsCmd.NewSession, (res) => {
+        console.log(res);
+      });
 
       ws.connect();
     }
@@ -53,17 +65,22 @@ export function SocketProvider({
     createClient();
 
     return () => {
-      unmounted = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
+      unmountedRef.current = true;
+      clearTimeout(reconnectTimerRef.current);
       clientRef.current?.disconnect();
       clientRef.current = null;
       setClient(null);
+      setSessionId(null);
     };
   }, [reconnectDelay]);
 
   return (
-    <SocketContext.Provider value={{ client, connected }}>
+    <SocketContext.Provider value={{ client, connected, sessionId }}>
       {children}
     </SocketContext.Provider>
   );
+}
+
+function generateClientId(): string {
+  return `client-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }

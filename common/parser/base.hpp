@@ -25,6 +25,7 @@ namespace Raptor::Common::Parsers {
         }
 
 
+
         protected:
         void   setState (State  s) noexcept { state_  = s; }
         State  getState ()  const noexcept  { return state_;  }

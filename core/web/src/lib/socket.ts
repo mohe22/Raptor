@@ -1,8 +1,10 @@
+import type { OSKey } from "./data";
+
 export const WsCmd = {
-  DashboardStatus: 0x00,
+  NewSession: 0x1,
+  Error: 0xfe,
   Unknown: 0xff,
 } as const;
-
 export type WsCmd = (typeof WsCmd)[keyof typeof WsCmd];
 
 export const WsStatus = {
@@ -12,39 +14,42 @@ export const WsStatus = {
 
 export type WsStatus = (typeof WsStatus)[keyof typeof WsStatus];
 
-const HEADER_SIZE = 6;
-const PAYLOAD_LEN_OFF = 2;
-
-interface WsFrame {
-  header: {
-    cmd: WsCmd;
-    status: WsStatus;
-    payloadLen: number;
+type WsCmdData = {
+  [WsCmd.NewSession]: {
+    id: string;
+    hostname: string;
+    os: OSKey;
+    username: string;
+    timezone: string;
+    serverId: string;
+    connectedAt: string;
   };
-  payload: Uint8Array;
-}
+  [WsCmd.Error]: undefined;
+  [WsCmd.Unknown]: undefined;
+};
 
 interface WsRequest {
   command: WsCmd;
-  payload?: unknown;
+  payload: unknown;
 }
 
-interface WsJsonResponse {
-  command: WsCmd;
+export interface WsJsonResponse<K extends WsCmd = WsCmd> {
+  command: K;
   status: WsStatus;
-  data?: unknown;
+  data: WsCmdData[K];
   error?: string;
 }
+
+type AnyHandler = (res: WsJsonResponse<WsCmd>) => void;
 
 export class RaptorWsClient {
   url: string;
   #ws: WebSocket | null = null;
-  #handlers: Map<WsCmd, (frame: WsFrame | WsJsonResponse) => void> = new Map();
-
+  #handlers: Map<WsCmd, AnyHandler> = new Map();
   onOpen: (() => void) | null = null;
   onClose: ((e: CloseEvent) => void) | null = null;
   onError: ((e: Event) => void) | null = null;
-  onUnhandled: ((data: WsFrame | WsJsonResponse) => void) | null = null;
+  onUnhandled: ((res: WsJsonResponse) => void) | null = null;
 
   constructor(url: string) {
     this.url = url;
@@ -53,7 +58,6 @@ export class RaptorWsClient {
   connect(): void {
     if (this.#ws) this.disconnect();
     this.#ws = new WebSocket(this.url);
-    this.#ws.binaryType = "arraybuffer";
     this.#ws.onopen = () => this.onOpen?.();
     this.#ws.onclose = (e) => this.onClose?.(e);
     this.#ws.onerror = (e) => this.onError?.(e);
@@ -69,23 +73,9 @@ export class RaptorWsClient {
     return this.#ws?.readyState === WebSocket.OPEN;
   }
 
-  #sendJson(request: WsRequest): void {
-    if (!this.connected) {
-      throw new Error("WebSocket is not connected");
-    }
-    const jsonStr = JSON.stringify(request);
-
-    this.#ws!.send(jsonStr); // This should be Text
-  }
-
-  requestDashboardStatus(): void {
-    this.#sendJson({
-      command: WsCmd.DashboardStatus,
-    });
-  }
-
-  on(cmd: WsCmd, handler: (data: WsFrame | WsJsonResponse) => void): this {
-    this.#handlers.set(cmd, handler);
+  // K is inferred from `cmd`, so `res.data` inside the handler is fully typed.
+  on<K extends WsCmd>(cmd: K, handler: (res: WsJsonResponse<K>) => void): this {
+    this.#handlers.set(cmd, handler as AnyHandler);
     return this;
   }
 
@@ -94,66 +84,30 @@ export class RaptorWsClient {
     return this;
   }
 
-  #handleMessage(event: MessageEvent): void {
-    // Try to parse as binary frame first
-    if (event.data instanceof ArrayBuffer) {
-      const frame = this.#parseFrame(event.data);
-      if (frame) {
-        const handler = this.#handlers.get(frame.header.cmd);
-
-        if (handler) {
-          handler(frame);
-        } else {
-          this.onUnhandled?.(frame);
-        }
-      }
-      return;
-    }
-
-    // Try to parse as JSON
-    if (typeof event.data === "string") {
-      try {
-        const response = JSON.parse(event.data) as WsJsonResponse;
-        const handler = this.#handlers.get(response.command);
-        if (handler) {
-          handler(response);
-        } else {
-          this.onUnhandled?.(response);
-        }
-      } catch (err) {
-        console.warn("[RaptorWs] failed to parse message:", event.data, err);
-      }
-      return;
-    }
-
-    console.warn("[RaptorWs] unexpected message type:", typeof event.data);
+  newSession(id: string): void {
+    this.#send({ command: WsCmd.NewSession, payload: { id } });
   }
 
-  #parseFrame(buffer: ArrayBuffer): WsFrame | null {
-    if (buffer.byteLength < HEADER_SIZE) {
-      console.error(
-        `[RaptorWs] frame too short: ${buffer.byteLength} bytes (need ${HEADER_SIZE})`,
-      );
-      return null;
+  #send(request: WsRequest): void {
+    if (!this.connected) throw new Error("WebSocket is not connected");
+    this.#ws!.send(JSON.stringify(request));
+  }
+
+  #handleMessage(event: MessageEvent): void {
+    if (typeof event.data !== "string") {
+      console.warn("[RaptorWs] unexpected message type:", typeof event.data);
+      return;
     }
-
-    const view = new DataView(buffer);
-    const header = {
-      cmd: view.getUint8(0) as WsCmd,
-      status: view.getUint8(1) as WsStatus,
-      payloadLen: view.getUint32(PAYLOAD_LEN_OFF, false),
-    };
-
-    const expectedTotal = HEADER_SIZE + header.payloadLen;
-    if (buffer.byteLength < expectedTotal) {
-      console.error(
-        `[RaptorWs] truncated frame: have ${buffer.byteLength} bytes, ` +
-          `header says payload is ${header.payloadLen} bytes`,
-      );
-      return null;
+    try {
+      const response = JSON.parse(event.data) as WsJsonResponse;
+      const handler = this.#handlers.get(response.command);
+      if (handler) {
+        handler(response);
+      } else {
+        this.onUnhandled?.(response);
+      }
+    } catch (err) {
+      console.warn("[RaptorWs] failed to parse message:", event.data, err);
     }
-
-    const payload = new Uint8Array(buffer, HEADER_SIZE, header.payloadLen);
-    return { header, payload };
   }
 }

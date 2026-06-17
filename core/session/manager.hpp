@@ -3,13 +3,9 @@
 #include "core/session/base.hpp"
 #include "libs/net/include/address.hpp"
 #include <cstdint>
-#include <print>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
-#include <thread>
-#include <atomic>
-#include <condition_variable>
 #include "type.hpp"
 #include "utils.hpp"
 
@@ -47,7 +43,8 @@ namespace Raptor::Core::Server {
         Common::Types::ServerType protocol;
         Session::Status status;
         uint64_t idleSeconds;
-        Common::Types::TimePoint connectedAt;
+        uint64_t connectedAt;
+
         std::string remoteAddress; // ip:port
 
         std::string hostname;
@@ -90,7 +87,7 @@ namespace Raptor::Core::Server {
             Common::Types::ServerType protocol_,
             Session::Status status_,
             uint64_t idleSeconds_,
-            Common::Types::TimePoint connectedAt_,
+            uint64_t connectedAt_,
             std::string remoteAddress_,
             std::string hostname_,
             std::string username_,
@@ -149,46 +146,16 @@ namespace Raptor::Core::Server {
     class SessionManager {
     public:
         SessionManager();
-        ~SessionManager();
 
-        SessionManager(const SessionManager&)            = delete;
+        SessionManager(const SessionManager&)  = delete;
         SessionManager& operator=(const SessionManager&) = delete;
         SessionManager(SessionManager&& other) noexcept {
-            std::println("move");
-            // Stop source thread so nobody is touching its sessions_
-            other.stopMonitor();
-
-            {
-                std::unique_lock lock(other.mutex_);
-                sessions_ = std::move(other.sessions_);
-            }
-
-            // mutex_, cv_ are freshly default-constructed — that's fine
-            // spin up our own monitor for the stolen sessions
-            running_ = true;
-            startMonitor();
+            std::unique_lock lock(other.mutex_);
+            sessions_ = std::move(other.sessions_);
         }
 
         SessionManager& operator=(SessionManager&& other) noexcept {
             if (this == &other) return *this;
-
-            // Stop and drain ourselves first
-            stopMonitor();
-            {
-                std::unique_lock lock(mutex_);
-                sessions_.clear();
-            }
-
-            // Stop source
-            other.stopMonitor();
-            {
-                std::unique_lock lockOther(other.mutex_);
-                std::unique_lock lockSelf(mutex_);
-                sessions_ = std::move(other.sessions_);
-            }
-
-            running_ = true;
-            startMonitor();
 
             return *this;
         };
@@ -373,24 +340,12 @@ namespace Raptor::Core::Server {
         std::unordered_map<uint64_t, std::unique_ptr<Session::Base>> sessions_;
 
         mutable std::shared_mutex   mutex_;    /// Protects sessions_ — shared reads, exclusive writes.
-        std::thread thread_;   /// Background monitor thread.
-        std::atomic<bool>  running_;  /// Controls monitor loop lifetime.
-        std::condition_variable_any cv_;       /// Wakes monitor early on shutdown.
-
-        void onSessionCreated(const uint64_t id, const std::string& address,
+          void onSessionCreated(const uint64_t id, const std::string& address,
                                                const Common::Types::ServerType type,
                                                const std::string& serverId) noexcept;
 
         void onSessionCreateFailed(const std::string& serverId) noexcept;
 
-        /// Starts the background monitor thread.
-        void startMonitor();
-
-        /// Signals and joins the monitor thread.
-        void stopMonitor();
-
-        /// Scans sessions for idle/disconnected state and removes stale ones.
-        void monitorLoop();
     };
 
 } // namespace Raptor::Core::Server

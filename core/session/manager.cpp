@@ -8,11 +8,6 @@ namespace Raptor::Core::Server {
 
 SessionManager::SessionManager() {
     sessions_.reserve(Core::Config::MAX_CONNECTIONS);
-    startMonitor();
-}
-
-SessionManager::~SessionManager() {
-    stopMonitor();
 }
 
 
@@ -23,7 +18,6 @@ bool SessionManager::remove(const uint64_t id) {
         std::unique_lock lock(mutex_);
         auto it = sessions_.find(id);
         if (it != sessions_.end()) {
-            serverId = it->second->connectedTo();
             sessions_.erase(it);
             removed = true;
         }
@@ -94,73 +88,9 @@ SessionsInfoList SessionManager::getSessionsInfo() const {
     return data;
 }
 
-void SessionManager::startMonitor() {
-    running_ = true;
-    thread_  = std::thread([this] { monitorLoop(); });
-}
-
-void SessionManager::stopMonitor() {
-    running_ = false;
-    cv_.notify_one();
-    if (thread_.joinable())
-        thread_.join();
-}
 
 
-void SessionManager::monitorLoop() {
-    while (running_) {
-        std::vector<uint64_t> toRemove;
-    {
-        std::shared_lock lock(mutex_);
-        for (const auto& [id, session] : sessions_) {
-            const auto  idle     = session->idleSeconds();
-            const auto& serverId = session->connectedTo();
 
-            if (session->isDisconnected()) {
-                Context::get().logs().info(Db::LogCategory::Session, "SESSION_EXPIRED",
-                    std::format("id={} addr={} proto={} uptime={}s",
-                        id, session->getAddressStr(),
-                        Common::Types::ToString(session->type()),
-                        session->uptimeSeconds()),
-                    "", serverId);
-                toRemove.push_back(id);
-                continue;
-            }
-
-            if (idle >= Config::TIMEOUT_SECONDS) {
-                Context::get().logs().warn(Db::LogCategory::Session, "SESSION_TIMEOUT",
-                    std::format("id={} addr={} proto={} idle={}s timeout={}s",
-                        id, session->getAddressStr(),
-                        Common::Types::ToString(session->type()),
-                        idle, Config::TIMEOUT_SECONDS),
-                    "", serverId);
-                session->setStatus(Session::Status::Disconnected);
-                toRemove.push_back(id);
-                continue;
-            }
-
-            if (idle >= Config::IDLE_SECONDS && session->isConnected()) {
-                Context::get().logs().debug(Db::LogCategory::Session, "SESSION_IDLE",
-                    std::format("id={} addr={} proto={} idle={}s",
-                        id, session->getAddressStr(),
-                        Common::Types::ToString(session->type()),
-                        idle),
-                    "", serverId);
-                session->setStatus(Session::Status::Idle);
-            }
-        }
-    }
-
-    if (!toRemove.empty()) {
-        std::unique_lock lock(mutex_);
-        for (const auto id : toRemove)
-        sessions_.erase(id);
-    }
-
-    std::shared_lock lock(mutex_);
-    cv_.wait_for(lock, std::chrono::minutes(1), [this] { return !running_; });
-    }
-}
 
 
 void SessionManager::onSessionCreated(const uint64_t id, const std::string& address,
@@ -188,7 +118,7 @@ void SessionManager::onSessionCreated(const uint64_t id, const std::string& addr
                 base->type(),
                 base->status(),
                 base->idleSeconds(),
-                base->connectedAt(),
+                base->connectedAtUnix(),
                 base->getAddressStr(),
                 reg.hostname,
                 reg.username,

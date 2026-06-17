@@ -8,7 +8,10 @@
 #include "header.hpp"
 #include "libs/net/include/connection.hpp"
 #include "libs/net/include/epoll.hpp"
+
+#include "core/api/controllers/socket.hpp"
 #include <print>
+#include <string>
 
 
 namespace Raptor::Core::Session {
@@ -54,10 +57,12 @@ namespace Raptor::Core::Session {
     public Common::Parsers::TcpParser<uint8_t,Config::RECV_BUFFER_SIZE>
     {
         public:
-        TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id,const std::string& connectedTo)
-        : Base(id, Common::Types::ServerType::TCP,connectedTo), connection_(std::move(conn)){
+        TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id,const std::string&serverId)
+        :
+        Base(id, Common::Types::ServerType::TCP,serverId),
+        connection_(std::move(conn)){
             fd = connection_->getSocket();
-             sendCommand("tree /",22);
+             // sendCommand("tree /",22);
         }
         ~TcpSession() noexcept {
             std::println("~TcpSession id={}", id());
@@ -82,13 +87,13 @@ namespace Raptor::Core::Session {
             return std::format("{}:{}", ipRes.value().data(), portRes.value());
         }
 
-        void onCommand(const Common::Header& header, std::string_view command) noexcept override{
+        void onCommand(const Common::Header&, std::string_view command) noexcept override{
             // header.print();
             std::println("{}",command);
         };
         void onUpload(const Common::Header&, std::string_view) noexcept override {};
         void onDownload(const Common::Header&, std::string_view) noexcept override {};
-        void onRegister(const Common::Header&h, std::string_view body) noexcept override {
+        void onRegister(const Common::Header&, std::string_view body) noexcept override {
             auto result = Common::Register::deserialize(
                 std::span<const uint8_t>(
                     reinterpret_cast<const uint8_t*>(body.data()),
@@ -104,7 +109,16 @@ namespace Raptor::Core::Session {
             printRegister(*result);
             setRegistrationInfo(*result);
 
-
+            // dispatch to UI
+            Api::WebSocket::dispatchNewSession(
+                result->username,
+                result->hostname,
+                result->timezone,
+                std::to_string(id()),
+                connectedAtStr(),
+                result->os,
+                connectedTo()
+            );
         }
 
 
@@ -160,8 +174,9 @@ namespace Raptor::Core::Session {
                                 );
                                 if (!res) return res;
 
-                                sentThisCall += res.value();
-                                task.offset += res.value();
+
+                                sentThisCall += static_cast<size_t>(res.value());
+                                task.offset  += static_cast<size_t>(res.value());
 
                                 if (task.offset < Common::Header::SIZE)
                                     return sentThisCall;
@@ -169,6 +184,8 @@ namespace Raptor::Core::Session {
 
                             task.state  = Tasks::TaskState::SendingData;
                             task.offset = 0;
+
+                            [[fallthrough]];
                         }
 
                         case Tasks::TaskState::SendingData: {
@@ -181,8 +198,8 @@ namespace Raptor::Core::Session {
                                 );
                                 if (!res) return res;
 
-                                sentThisCall += res.value();
-                                task.offset  += res.value();
+                                sentThisCall += static_cast<size_t>(res.value());
+                                task.offset  += static_cast<size_t>(res.value());
                             }
 
                             if (task.offset == cmd.cmd.size())

@@ -123,11 +123,7 @@ void Server::getServerById(const HttpRequestPtr&,std::function<void(const HttpRe
             sessionJson["protocol"] = Raptor::Common::Types::ToString(session.protocol);
             sessionJson["status"] = static_cast<int>(session.status); // or convert to string
             sessionJson["idleSeconds"] = static_cast<Json::UInt64>(session.idleSeconds);
-            sessionJson["connectedAtNs"] = static_cast<Json::Int64>(
-                std::chrono::duration_cast<std::chrono::nanoseconds>(
-                    session.connectedAt.time_since_epoch()
-                ).count()
-            );
+            sessionJson["connectedAtNs"] = static_cast<Json::Int64>(session.connectedAt);
             sessionJson["remoteAddress"] = session.remoteAddress;
             sessionJson["hostname"] = session.hostname;
             sessionJson["username"] = session.username;
@@ -311,7 +307,7 @@ void Server::resumeServer(const HttpRequestPtr& ,std::function<void(const HttpRe
 
 
 
-void Server::stopServer(const HttpRequestPtr& req,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& serverName){
+void Server::stopServer(const HttpRequestPtr&,std::function<void(const HttpResponsePtr&)>&& callback,const std::string& serverName){
     try {
         auto& servers = Raptor::Core::Context::get().servers();
         bool success = servers.stopServer(serverName);

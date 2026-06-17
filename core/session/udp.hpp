@@ -2,14 +2,13 @@
 #pragma once
 
 #include "base.hpp"
-#include "header.hpp"
 #include "libs/net/include/address.hpp"
 namespace Raptor::Core::Session {
     class UdpSession :
     public Base {
         public:
-        UdpSession(Net::Address address, uint64_t id,const std::string& connected)
-        : Base(id, Common::Types::ServerType::UDP,connected)
+        UdpSession(Net::Address address, uint64_t id,const std::string& serverId)
+        : Base(id, Common::Types::ServerType::UDP,serverId)
         , address_(std::move(address)){}
 
         std::string getAddressStr() const noexcept override {
