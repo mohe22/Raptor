@@ -1,7 +1,8 @@
 import type { OSKey } from "./data";
 
 export const WsCmd = {
-  NewSession: 0x1,
+  SessionConnected: 0x1,
+  SessionDisconnected: 0x2,
   Unknown: 0xff,
 } as const;
 export type WsCmd = (typeof WsCmd)[keyof typeof WsCmd];
@@ -14,7 +15,7 @@ export const WsStatus = {
 export type WsStatus = (typeof WsStatus)[keyof typeof WsStatus];
 
 type WsCmdData = {
-  [WsCmd.NewSession]: {
+  [WsCmd.SessionConnected]: {
     id: string;
     hostname: string;
     os: OSKey;
@@ -23,6 +24,10 @@ type WsCmdData = {
     serverId: string;
     connectedAt: string;
     remoteAddress: string; // ip:port
+  };
+  [WsCmd.SessionDisconnected]: {
+    id: string; // session ID that is disconnected
+    serverId: string; // to which server belong
   };
   [WsCmd.Unknown]: undefined;
 };
@@ -84,7 +89,7 @@ export class RaptorWsClient {
   }
 
   newSession(id: string): void {
-    this.#send({ command: WsCmd.NewSession, payload: { id } });
+    this.#send({ command: WsCmd.SessionConnected, payload: { id } });
   }
 
   #send(request: WsRequest): void {

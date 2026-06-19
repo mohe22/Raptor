@@ -72,16 +72,21 @@ namespace Raptor::Core::Session {
 
         /// Seconds elapsed since the last received data. Resets to 0 on touch().
         [[nodiscard]] uint64_t idleSeconds() const noexcept {
-            return std::chrono::duration_cast<std::chrono::seconds>(
-                Common::Types::Clock::now() - lastActive_
-            ).count();
+            return static_cast<uint64_t>(
+                 std::chrono::duration_cast<std::chrono::seconds>(
+                     Common::Types::Clock::now() - lastActive_
+                 ).count()
+             );
         }
 
         /// Seconds elapsed since the session was created.
         [[nodiscard]] uint64_t uptimeSeconds() const noexcept {
-            return std::chrono::duration_cast<std::chrono::seconds>(
-                Common::Types::Clock::now() - connectedAt_
-            ).count();
+            return static_cast<uint64_t>(
+                std::chrono::duration_cast<std::chrono::seconds>(
+                    Common::Types::Clock::now() - connectedAt_
+                ).count()
+            );
+
         }
 
         /// Unix timestamp (seconds since epoch) — use for storage and SessionDetails.

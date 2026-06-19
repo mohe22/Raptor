@@ -1,5 +1,10 @@
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { RaptorWsClient, WsCmd, WsStatus } from "../lib/socket";
+import {
+  RaptorWsClient,
+  WsCmd,
+  WsStatus,
+  type WsJsonResponse,
+} from "../lib/socket";
 import { queryClient } from "../main";
 import { SESSION_QUERY_KEYS } from "../features/session/queries";
 import type { BriefSession } from "../types/session";
@@ -13,6 +18,91 @@ interface SocketProviderProps {
   children: ReactNode;
   reconnectDelay?: number;
 }
+
+function addSessionToCache(serverId: string, session: Partial<BriefSession>) {
+  queryClient.setQueryData(
+    SESSION_QUERY_KEYS.all(serverId),
+    (old: BriefSession[] = []) => {
+      if (old.some((s) => s.id === session.id)) return old;
+      return [...old, session];
+    },
+  );
+}
+function removeSessionFromCache(serverId: string, sessionId: string) {
+  queryClient.setQueryData(
+    SESSION_QUERY_KEYS.all(serverId),
+    (old: BriefSession[] = []) => old.filter((s) => s.id !== sessionId),
+  );
+}
+function adjustSessionCount(serverId: string, delta: 1 | -1) {
+  queryClient.setQueryData(SERVER_QUERY_KEYS.all, (old: ServerInfo[] = []) =>
+    old.map((s) =>
+      s.config.instanceName === serverId
+        ? { ...s, sessionCounter: Math.max(0, s.sessionCounter + delta) }
+        : s,
+    ),
+  );
+
+  queryClient.setQueryData(
+    SERVER_QUERY_KEYS.poolStatus,
+    (old: ServerPoolStatus | undefined) => {
+      if (!old) return old;
+      return {
+        ...old,
+        totalSessionCount: Math.max(0, old.totalSessionCount + delta),
+        activeSessionCount: Math.max(0, old.activeSessionCount + delta),
+        servers: old.servers.map((s) =>
+          s.name === serverId
+            ? { ...s, sessionCount: Math.max(0, s.sessionCount + delta) }
+            : s,
+        ),
+      };
+    },
+  );
+}
+
+function handleSessionConnected(
+  res: WsJsonResponse<typeof WsCmd.SessionConnected>,
+) {
+  if (res.status !== WsStatus.Ok) {
+    console.warn("[SessionConnected] server returned error:", res.error);
+    return;
+  }
+
+  const { id, hostname, os, username, timezone, serverId, remoteAddress } =
+    res.data;
+
+  const session: Partial<BriefSession> = {
+    id,
+    hostname,
+    os,
+    username,
+    timezone,
+    remoteAddress,
+    connectedTo: serverId,
+    status: "Connected",
+    idleSeconds: 0,
+  };
+
+  addSessionToCache(serverId, session);
+  adjustSessionCount(serverId, 1);
+}
+
+function handleSessionDisconnected(
+  res: WsJsonResponse<typeof WsCmd.SessionDisconnected>,
+) {
+  if (res.status !== WsStatus.Ok) {
+    console.warn("[SessionDisconnected] server returned error:", res.error);
+    return;
+  }
+
+  const { id, serverId } = res.data;
+
+  removeSessionFromCache(serverId, id);
+  adjustSessionCount(serverId, -1);
+}
+
+// ---- Provider --------------------------------------------------------------
 
 export function SocketProvider({
   children,
@@ -54,52 +144,8 @@ export function SocketProvider({
         console.warn("[SocketProvider] unhandled message:", res);
       };
 
-      ws.on(WsCmd.NewSession, (res) => {
-        const { data, status } = res;
-        if (status !== WsStatus.Ok) {
-          console.warn("[NewSession] server returned error:", res.error);
-          return;
-        }
-        console.log(data);
-
-        // 1. Add it to the session list for that server
-        queryClient.setQueryData(
-          SESSION_QUERY_KEYS.all(data.serverId),
-          (old: BriefSession[] = []) => {
-            if (old.some((s) => s.id === data.id)) return old;
-            return [...old, data];
-          },
-        );
-
-        // 2. server's sessionCounter in the "all servers" list
-        queryClient.setQueryData(
-          SERVER_QUERY_KEYS.all,
-          (old: ServerInfo[] = []) =>
-            old.map((s) =>
-              s.config.instanceName === data.serverId
-                ? { ...s, sessionCounter: s.sessionCounter + 1 }
-                : s,
-            ),
-        );
-
-        // 3. update counts in the pool status summary
-        queryClient.setQueryData(
-          SERVER_QUERY_KEYS.poolStatus,
-          (old: ServerPoolStatus | undefined) => {
-            if (!old) return old;
-            return {
-              ...old,
-              totalSessionCount: old.totalSessionCount + 1,
-              activeSessionCount: old.activeSessionCount + 1,
-              servers: old.servers.map((s) =>
-                s.name === data.serverId
-                  ? { ...s, sessionCount: s.sessionCount + 1 }
-                  : s,
-              ),
-            };
-          },
-        );
-      });
+      ws.on(WsCmd.SessionConnected, handleSessionConnected);
+      ws.on(WsCmd.SessionDisconnected, handleSessionDisconnected);
 
       ws.connect();
     }

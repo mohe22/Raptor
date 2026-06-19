@@ -16,41 +16,6 @@
 
 namespace Raptor::Core::Session {
 
-    inline void printRegister(const Raptor::Common::Register& reg) {
-        std::println("Hostname          : {}", reg.hostname);
-        std::println("Username          : {}", reg.username);
-        std::println("Home Dir          : {}", reg.homeDir);
-        std::println("Shell             : {}", reg.shell);
-        std::println("Is Admin          : {}", reg.isAdmin);
-        std::println("Is Sudoer         : {}", reg.isSudoer);
-        std::println("Domain            : {}", reg.domain);
-        std::println("OS                : {} {}", reg.os, reg.osVersion);
-        std::println("Kernel            : {}", reg.kernelVersion);
-        std::println("Arch              : {}", reg.arch);
-        std::println("CPU               : {}", reg.cpu);
-        std::println("CPU Cores         : {}", reg.cpuCores);
-        std::println("RAM               : {} bytes", reg.ramBytes);
-        std::println("Disk Total        : {} bytes", reg.diskTotalBytes);
-        std::println("Disk Free         : {} bytes", reg.diskFreeBytes);
-        std::println("Uptime (sec)      : {}", reg.uptimeSeconds);
-        std::println("PID               : {}", reg.pid);
-        std::println("Process Path      : {}", reg.processPath);
-        std::println("Process Name      : {}", reg.processName);
-        std::println("Is Docker         : {}", reg.isDocker);
-        std::println("Is VM             : {} ({})", reg.isVM, reg.vmType);
-        std::println("Internal IP       : {}", reg.internalIp);
-        std::println("Internal IP2      : {}", reg.internalIp2);
-        std::println("MAC Address       : {}", reg.macAddress);
-        std::println("Default Gateway   : {}", reg.defaultGateway);
-        std::println("DNS Server        : {}", reg.dnsServer);
-        std::println("Is Proxy          : {}", reg.isProxy);
-        std::println("Proxy URL         : {}", reg.proxyUrl);
-        std::println("Domain Joined     : {}", reg.isDomainJoined);
-        std::println("SELinux Enabled   : {}", reg.selinuxEnabled);
-        std::println("AppArmor Enabled  : {}", reg.apparmorEnabled);
-        std::println("Timezone          : {}", reg.timezone);
-        std::println("Locale            : {}", reg.locale);
-    }
     class TcpSession :
     public Net::Poll::Descriptor,
     public Base,
@@ -62,10 +27,10 @@ namespace Raptor::Core::Session {
         Base(id, Common::Types::ServerType::TCP,serverId),
         connection_(std::move(conn)){
             fd = connection_->getSocket();
-             // sendCommand("tree /",22);
         }
         ~TcpSession() noexcept {
-            std::println("~TcpSession id={}", id());
+            // in case client disconnected report to ui
+            Api::WebSocket::dispatchSessionDisconnected(std::to_string(id()),connectedTo());
         }
 
         Net::Result<size_t> read(void* buf, size_t len) noexcept override {
@@ -106,11 +71,10 @@ namespace Raptor::Core::Session {
                 return;
             }
 
-            printRegister(*result);
             setRegistrationInfo(*result);
 
             // dispatch to UI
-            Api::WebSocket::dispatchNewSession(
+            Api::WebSocket::dispatchSessionConnected(
                 result->username,
                 result->hostname,
                 result->timezone,
@@ -185,10 +149,8 @@ namespace Raptor::Core::Session {
 
                             task.state  = Tasks::TaskState::SendingData;
                             task.offset = 0;
-
                             [[fallthrough]];
                         }
-
                         case Tasks::TaskState::SendingData: {
                             size_t remaining = cmd.cmd.size() - task.offset;
 
@@ -208,7 +170,6 @@ namespace Raptor::Core::Session {
 
                             return sentThisCall;
                         }
-
                         case Tasks::TaskState::Done:
                             return sentThisCall;
                     }

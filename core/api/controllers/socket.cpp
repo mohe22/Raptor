@@ -103,7 +103,7 @@ void WebSocket::handleJsonMessage(
 
     dispatchCommand(conn, cmd, payload);
 }
-void WebSocket::dispatchNewSession(
+void WebSocket::dispatchSessionConnected(
     const std::string& username,
     const std::string& hostname,
     const std::string& timezone,
@@ -123,9 +123,16 @@ void WebSocket::dispatchNewSession(
     data["os"]  = os;
     data["serverId"] = serverId;
     data["remoteAddress"] = address;
-
-   sendJsonOk(connection_, WsCmd::NewSession, data);
+   sendJsonOk(connection_, WsCmd::SessionConnected, data);
 }
+
+void WebSocket::dispatchSessionDisconnected(const std::string& id,const std::string& serverId) noexcept{
+    Json::Value data;
+    data["id"]  = id;
+    data["serverId"] = serverId;
+    sendJsonOk(connection_, WsCmd::SessionDisconnected, data);
+};
+
 void WebSocket::dispatchCommand(
     const drogon::WebSocketConnectionPtr& conn,
     WsCmd cmd,

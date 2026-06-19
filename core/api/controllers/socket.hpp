@@ -9,7 +9,8 @@ namespace Raptor::Core::Api {
 // Commands the client can send over the WebSocket.
 // The "command" field in the JSON frame identifies the type.
 enum class WsCmd : uint8_t {
-    NewSession = 0x1,
+    SessionConnected = 0x1,
+    SessionDisconnected = 0x2,
     Unknown    = 0xFF,
 };
 
@@ -39,7 +40,7 @@ public:
     void handleConnectionClosed(const drogon::WebSocketConnectionPtr&) override;
 
 
-    static void dispatchNewSession(
+    static void dispatchSessionConnected(
         const std::string& username,
         const std::string&hostname,
         const std::string&timezone,
@@ -49,6 +50,7 @@ public:
         const std::string& serverId,
         const std::string& address
     )  noexcept;
+    static void dispatchSessionDisconnected(const std::string& id,const std::string& serverId) noexcept;
 private:
     // Parses the raw JSON string, validates the "command" field,
     // extracts "payload", and forwards to dispatchCommand.
