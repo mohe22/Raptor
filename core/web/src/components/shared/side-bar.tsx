@@ -110,7 +110,7 @@ function ServerAgents({
               </span>
               {agent.idleSeconds !== undefined && (
                 <span className="text-[9px] text-muted-foreground font-mono">
-                  {agent.idleSeconds}s idle
+                  {agent.idleSeconds || 0}s idle
                 </span>
               )}
             </div>

@@ -53,7 +53,6 @@ void WebSocket::handleNewConnection(
 void WebSocket::handleConnectionClosed(const drogon::WebSocketConnectionPtr&) {
     std::lock_guard lock(mutex_);
     connection_ = nullptr;
-    std::println("[ws] client disconnected");
 }
 
 
@@ -67,8 +66,7 @@ void WebSocket::handleNewMessage(
         return;
     }
 
-
-    sendErrorJson(conn, WsCmd::Error, "binary frames are not supported");
+    sendErrorJson(conn, WsCmd::Unknown, "binary frames are not supported");
 }
 
 void WebSocket::handleJsonMessage(
@@ -81,20 +79,20 @@ void WebSocket::handleJsonMessage(
     const std::unique_ptr<Json::CharReader> reader(builder.newCharReader());
 
     if (!reader->parse(msg.data(), msg.data() + msg.size(), &root, &errs)) {
-        sendErrorJson(conn, WsCmd::Error, std::format("invalid json: {}", errs));
+        sendErrorJson(conn, WsCmd::Unknown, std::format("invalid json: {}", errs));
         return;
     }
 
     // Every message must carry a numeric "command" field.
     if (!root.isMember("command") || !root["command"].isUInt()) {
-        sendErrorJson(conn, WsCmd::Error, "missing or invalid 'command' field");
+        sendErrorJson(conn, WsCmd::Unknown, "missing or invalid 'command' field");
         return;
     }
 
     const auto cmdByte = static_cast<uint8_t>(root["command"].asUInt());
 
     if (!Utils::isValidWsCmd(cmdByte)) {
-        sendErrorJson(conn, WsCmd::Error, std::format("unknown command: 0x{:02x}", cmdByte));
+        sendErrorJson(conn, WsCmd::Unknown, std::format("unknown command: 0x{:02x}", cmdByte));
         return;
     }
 
@@ -112,7 +110,8 @@ void WebSocket::dispatchNewSession(
     const std::string& id,
     const std::string& connectedAt,
     const std::string& os,
-    const std::string& serverId
+    const std::string& serverId,
+    const std::string& address
 ) noexcept
 {
     Json::Value data;
@@ -123,6 +122,7 @@ void WebSocket::dispatchNewSession(
     data["connectedAt"] = connectedAt;
     data["os"]  = os;
     data["serverId"] = serverId;
+    data["remoteAddress"] = address;
 
    sendJsonOk(connection_, WsCmd::NewSession, data);
 }

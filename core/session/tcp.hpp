@@ -117,7 +117,8 @@ namespace Raptor::Core::Session {
                 std::to_string(id()),
                 connectedAtStr(),
                 result->os,
-                connectedTo()
+                connectedTo(),
+                getAddressStr()
             );
         }
 

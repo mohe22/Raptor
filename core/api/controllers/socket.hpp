@@ -10,7 +10,6 @@ namespace Raptor::Core::Api {
 // The "command" field in the JSON frame identifies the type.
 enum class WsCmd : uint8_t {
     NewSession = 0x1,
-    Error      = 0xFE,
     Unknown    = 0xFF,
 };
 
@@ -47,7 +46,8 @@ public:
         const std::string& id,
         const std::string& connectedAt,
         const std::string& os,
-        const std::string& serverId
+        const std::string& serverId,
+        const std::string& address
     )  noexcept;
 private:
     // Parses the raw JSON string, validates the "command" field,

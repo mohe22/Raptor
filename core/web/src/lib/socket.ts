@@ -2,7 +2,6 @@ import type { OSKey } from "./data";
 
 export const WsCmd = {
   NewSession: 0x1,
-  Error: 0xfe,
   Unknown: 0xff,
 } as const;
 export type WsCmd = (typeof WsCmd)[keyof typeof WsCmd];
@@ -23,8 +22,8 @@ type WsCmdData = {
     timezone: string;
     serverId: string;
     connectedAt: string;
+    remoteAddress: string; // ip:port
   };
-  [WsCmd.Error]: undefined;
   [WsCmd.Unknown]: undefined;
 };
 

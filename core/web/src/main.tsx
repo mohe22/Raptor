@@ -15,7 +15,7 @@ import { ServerPage } from "./pages/server-page";
 import { SessionPage } from "./pages/agent-page";
 
 const root = document.getElementById("root");
-const queryClient = new QueryClient();
+export const queryClient = new QueryClient();
 
 ReactDOM.createRoot(root).render(
   <BrowserRouter>
