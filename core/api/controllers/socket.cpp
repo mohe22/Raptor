@@ -1,6 +1,15 @@
 #include "core/api/controllers/socket.hpp"
 #include "core/api/utils.hpp"
+#include "core/context.hpp"
+#include "core/session/base.hpp"
+#include "core/session/manager.hpp"
+#include "core/session/task/task.hpp"
+#include "core/session/tcp.hpp"
+#include "utils.hpp"
+#include <cstdint>
 #include <format>
+#include <print>
+#include <string>
 
 namespace Raptor::Core::Api {
 
@@ -98,9 +107,9 @@ void WebSocket::handleJsonMessage(
         return;
     }
 
-    const WsCmd     cmd     = static_cast<WsCmd>(cmdByte);
-    const Json::Value payload = root.isMember("payload")
-        ? root["payload"]
+    const WsCmd cmd  = static_cast<WsCmd>(cmdByte);
+    const Json::Value& payload = root.isMember("Data")
+        ? root["Data"]
         : Json::Value(Json::objectValue);
 
     dispatchCommand(conn, cmd, payload);
@@ -128,6 +137,16 @@ void WebSocket::dispatchSessionConnected(
    sendJsonOk(connection_, WsCmd::SessionConnected, data);
 }
 
+void WebSocket::dispatchCommandOutput(const Common::Header& header,const std::string_view output) noexcept{
+    Json::Value data;
+    data["header"]["packetId"] = static_cast<Json::UInt>(header.packetId);
+    data["header"]["type"] = static_cast<int>(header.type);
+    data["header"]["flags"]  = static_cast<int>(header.flags);
+    data["header"]["timestamp"] = Common::getCurrentTimeISO();
+    data["output"] = std::string(output);
+    sendJsonOk(connection_, WsCmd::CommandOutput, data);
+}
+
 void WebSocket::dispatchSessionDisconnected(const std::string& id,const std::string& serverId) noexcept{
     Json::Value data;
     data["id"]  = id;
@@ -138,9 +157,78 @@ void WebSocket::dispatchSessionDisconnected(const std::string& id,const std::str
 void WebSocket::dispatchCommand(
     const drogon::WebSocketConnectionPtr& conn,
     WsCmd cmd,
-    const Json::Value&)
+    const Json::Value&data)
 {
+
     switch (cmd) {
+        case WsCmd::ExecuteCommand:{
+            if (!data.isMember("sessionId") || !data.isMember("serverId") || !data.isMember("command")   || !data.isMember("priority") || !data.isMember("shellType") || !data.isMember("commandId")){
+                sendErrorJson(conn, cmd, "Invalid parameters");
+                return;
+            }
+
+            const std::string& sessionIdStr = data["sessionId"].asString();
+
+            uint64_t sessionId = 0;
+            try {
+                sessionId = static_cast<uint64_t>(std::stoull(sessionIdStr));
+            } catch (const std::exception&) {
+                sendErrorJson(conn, cmd, "Invalid sessionId format");
+                return;
+            }
+
+            const std::string& serverId = data["serverId"].asString();
+            const Server::SessionManager* sessionManager =  Context::get().servers().getSessionManager(serverId);
+            if(!sessionManager){
+                sendErrorJson(conn,cmd, "ServerId Not found!");
+                return;
+            }
+
+            Session::Base* session = sessionManager->find(sessionId);
+            if(!session){
+                sendErrorJson(conn, cmd, "SessionId was not found!");
+                return;
+            }
+            if (!data["priority"].isInt()) {
+                sendErrorJson(conn, cmd, "Invalid priority type");
+                return;
+            }
+
+            int priorityRaw = data["priority"].asInt();
+            if (priorityRaw < 0 || priorityRaw > 3) {
+                sendErrorJson(conn, cmd, "Priority out of range");
+                return;
+            }
+
+            const Tasks::TaskPriority priority =
+                static_cast<Tasks::TaskPriority>(priorityRaw);
+
+            if (!data["shellType"].isString()) {
+                 sendErrorJson(conn, cmd, "Invalid shellType type");
+                 return;
+             }
+
+            const std::string& shellTypeStr = data["shellType"].asString();
+            if (shellTypeStr != "pip" && shellTypeStr != "pty") {
+                sendErrorJson(conn, cmd, "Invalid shellType (expected: pip | pty)");
+                return;
+            }
+
+            int commandId = data["commandId"].asInt();
+
+            const std::string& cmd = data["command"].asString();
+            LOG_INFO << "=== ExecuteCommand ===";
+            LOG_INFO << "sessionId: " << sessionId;
+            LOG_INFO << "serverId: " << serverId;
+            LOG_INFO << "command: " << cmd;
+            LOG_INFO << "priority: " << priorityRaw;
+            LOG_INFO << "shellType: " << shellTypeStr;
+            LOG_INFO << "Command Id: " << commandId;
+
+            session->sendCommand(cmd, commandId,priority);
+
+            break;
+        }
         default:
             sendErrorJson(conn, cmd,
                 std::format("unhandled command: 0x{:02x}", static_cast<uint8_t>(cmd)));

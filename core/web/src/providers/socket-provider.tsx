@@ -102,8 +102,6 @@ function handleSessionDisconnected(
   adjustSessionCount(serverId, -1);
 }
 
-// ---- Provider --------------------------------------------------------------
-
 export function SocketProvider({
   children,
   reconnectDelay = 3000,

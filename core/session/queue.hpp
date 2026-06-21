@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <optional>
+#include <print>
 #include <queue>
 #include <vector>
 
@@ -38,20 +39,7 @@ namespace Raptor::Core::Session::Queue {
             queue_.push(std::move(item));
         }
 
-        /**
-         * @brief Constructs and emplaces an item.
-         *
-         * Thread-safe. Forwards arguments to T's constructor.
-         *
-         * @param item Item to emplace (moved from).
-         *
-         * @note This variant takes a rvalue reference. For full emplacement
-         *       with multiple constructor args, define a template version.
-         */
-        void emplace(T&& item) noexcept{
-            std::lock_guard<std::mutex> lock(mtx_);
-            queue_.emplace(std::move(item));
-        }
+
 
         /**
          * @brief Removes the front element if the queue is non-empty.

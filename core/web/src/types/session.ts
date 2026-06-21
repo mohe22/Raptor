@@ -54,3 +54,35 @@ export interface SessionDetails extends BriefSession {
   apparmorEnabled: boolean;
   locale: string;
 }
+
+export const TaskPriority = {
+  Low: 0,
+  Normal: 1,
+  High: 2,
+  Critical: 3,
+} as const;
+
+export type TaskPriority = (typeof TaskPriority)[keyof typeof TaskPriority];
+export type Shelltype = "pty" | "pip";
+
+export interface PacketHeader {
+  packetId: number;
+  type: number; // 0=FileUpload, 1=FileDownload, 2=Command, 3=Register
+  flags: number; // Bitmask of flags
+  payloadSize: number;
+}
+
+export interface ExecuteCommand {
+  sessionId: string;
+  commandId: number;
+  serverId: string;
+  command: string;
+  priority: TaskPriority;
+  shellType: Shelltype;
+}
+
+export interface PacketHeader {
+  packetId: number;
+  type: number; // 0=FileUpload, 1=FileDownload, 2=Command, 3=Register
+  flags: number; // Bitmask of flags
+}

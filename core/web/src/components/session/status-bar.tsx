@@ -54,7 +54,7 @@ export function StatusBar({
   return (
     <div
       style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-      className="flex items-stretch h-9 border-b border-zinc-800 bg-zinc-950 overflow-x-auto"
+      className="flex items-stretch min-h-9 border-b border-zinc-800 bg-zinc-950 overflow-x-auto"
     >
       <div className="flex items-center gap-2 px-3 border-r border-zinc-800 shrink-0">
         <span className="text-sm leading-none">{config.emoji}</span>

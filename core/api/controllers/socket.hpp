@@ -1,16 +1,20 @@
 #pragma once
+#include "header.hpp"
 #include <cstdint>
 #include <drogon/WebSocketController.h>
 #include <json/value.h>
 #include <mutex>
+#include <string_view>
 
 namespace Raptor::Core::Api {
 
 // Commands the client can send over the WebSocket.
 // The "command" field in the JSON frame identifies the type.
 enum class WsCmd : uint8_t {
-    SessionConnected = 0x1,
-    SessionDisconnected = 0x2,
+    SessionConnected = 0x1, // server to client: send if new session connected.
+    SessionDisconnected = 0x2, // server to Client: send if session was disconnected
+    ExecuteCommand = 0x03,  // Server to Client: request to run a shell command
+    CommandOutput = 0x04,  // Client to Server: response with command output
     Unknown    = 0xFF,
 };
 
@@ -51,6 +55,7 @@ public:
         const std::string& address
     )  noexcept;
     static void dispatchSessionDisconnected(const std::string& id,const std::string& serverId) noexcept;
+    static void dispatchCommandOutput(const Common::Header&,const std::string_view) noexcept;
 private:
     // Parses the raw JSON string, validates the "command" field,
     // extracts "payload", and forwards to dispatchCommand.

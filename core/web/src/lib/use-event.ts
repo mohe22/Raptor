@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { WsCmd, type WsFrame, type WsJsonResponse } from "./socket";
 import { useSocket } from "../providers/socket-context";
+import type { WsCmd, WsJsonResponse } from "./socket";
 
-export function useEvent(
-  cmd: WsCmd,
-  handler: (frame: WsFrame | WsJsonResponse) => void,
+export function useEvent<K extends WsCmd>(
+  cmd: K,
+  handler: (res: WsJsonResponse<K>) => void,
 ) {
   const { client } = useSocket();
 

@@ -13,17 +13,10 @@ namespace Raptor::Common::Parsers{
         ~TcpParser() = default;
 
         void feed(const T* data, std::size_t len) noexcept override {
-
-            // check if we have enough space in the buffer to write the data
             if (!this->buffer.canWrite(len)) {
-                 this->buffer.compact();
-             };
-
-
-            std::size_t written = this->buffer.write(data, len);
-            if(written<len){
-                // TODO: handle partial write
+                this->buffer.compact();
             }
+            std::size_t written = this->buffer.write(data, len);
 
             while (true) {
                 if (this->getState() == State::ReadingHeader) {
@@ -32,14 +25,14 @@ namespace Raptor::Common::Parsers{
 
                     header_ = Header::deserialize(this->buffer.data(), Header::SIZE);
                     this->buffer.consume(Header::SIZE);
-                    bodyReceived = 0; // reset body counter
-
+                    bodyReceived = 0;
                     this->setState(State::ReadingBody);
                     continue;
                 }
+
                 if (this->getState() == State::ReadingBody) {
                     size_t available = this->buffer.size();
-                    if (available == 0) return; // nothing to read
+                    if (available == 0) return;
 
                     size_t remaining = header_.payloadSize - bodyReceived;
                     size_t toConsume = std::min(available, remaining);
@@ -48,42 +41,42 @@ namespace Raptor::Common::Parsers{
                     switch (header_.type) {
                         case PacketType::Command: {
                             this->onCommand(header_, {ptr, toConsume});
+                            size_t consumed = this->buffer.consume(toConsume);
+                            bodyReceived += consumed;
                             break;
                         }
-                        case PacketType::FileUpload:{
+                        case PacketType::FileUpload: {
                             this->onUpload(header_, {ptr, toConsume});
+                            size_t consumed = this->buffer.consume(toConsume);
+                            bodyReceived += consumed;
                             break;
                         }
                         case PacketType::FileDownload: {
                             this->onDownload(header_, {ptr, toConsume});
+                            size_t consumed = this->buffer.consume(toConsume);
+                            bodyReceived += consumed;
                             break;
                         }
                         case PacketType::Register: {
-                            // Only call onRegister when we have the FULL body
+                            // Only call when complete, but accumulate without consuming until then
                             if (bodyReceived + toConsume >= header_.payloadSize) {
                                 this->onRegister(header_, {ptr, header_.payloadSize});
+                                //  NOW consume the accumulated Register data
+                                size_t consumed = this->buffer.consume(toConsume);
+                                bodyReceived += consumed;
+                            } else {
+                                // Incomplete accumulate without consuming
+                                bodyReceived += toConsume;
+                                return;
                             }
                             break;
                         }
                     }
 
-                    // if the type was register do not consume because
-                    // we want to accumulate.
-                    if (header_.type != PacketType::Register) {
-                        size_t consumed = this->buffer.consume(toConsume);
-                        bodyReceived += consumed;
-                    } else {
-                        // For partial Register: Do not consume, just accumulate in buffer
-                        bodyReceived += toConsume;
-                        return;
-                    }
-
-
                     if (bodyReceived >= header_.payloadSize) {
                         reset();
-                        continue;
+                        continue;  // next packet
                     }
-
                     return;
                 }
             }

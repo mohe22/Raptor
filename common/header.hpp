@@ -25,8 +25,6 @@ namespace Raptor::Common {
         Success   = 1 << 5,  ///< Operation completed successfully
         LastChunk = 1 << 6,  ///< Final chunk of a file transfer — flush and close
         Metadata  = 1 << 7,  ///< First chunk — payload carries filename/file info
-
-
     };
 
     inline Flags operator|(Flags a, Flags b) noexcept {
@@ -61,7 +59,7 @@ namespace Raptor::Common {
     using PacketId = uint32_t;
 
 
-    static const char* ToString(PacketType type) noexcept {
+    inline const char* ToString(PacketType type) noexcept {
         switch (type) {
             case PacketType::FileUpload:   return "FileUpload";
             case PacketType::FileDownload: return "FileDownload";
@@ -71,7 +69,7 @@ namespace Raptor::Common {
         }
     }
 
-    static const char* ToString(PacketDirection dir) noexcept {
+    inline const char* ToString(PacketDirection dir) noexcept {
         switch (dir) {
             case PacketDirection::Req:  return "Req";
             case PacketDirection::Resp: return "Resp";
@@ -79,7 +77,7 @@ namespace Raptor::Common {
         }
     }
 
-    static const char* ToString(Flags flag) noexcept {
+    inline const char* ToString(Flags flag) noexcept {
         switch (flag) {
             case Flags::Ack:       return "Ack";
             case Flags::Error:     return "Error";

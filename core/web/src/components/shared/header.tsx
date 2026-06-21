@@ -14,7 +14,7 @@ export function Header({ title, subtitle, icon }: HeaderProps) {
   const { connected } = useSocket();
 
   return (
-    <header className="flex h-14 items-center justify-between border-b border-border bg-card/50 px-6">
+    <header className="flex min-h-14 items-center justify-between border-b border-border bg-card/50 px-6">
       <div className="flex items-center gap-3">
         <div>
           <div className="flex items-center gap-2">

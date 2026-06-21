@@ -118,8 +118,14 @@ namespace Raptor::Core::Session {
                 setStatus(Status::Connected);
         }
 
-        bool hasPendingWrites() const noexcept { return !sendQ_.empty(); }
+        bool hasPendingWrites() const noexcept {
+            return !sendQ_.empty();
+        }
 
+        /// Queue a command for sending to the client.
+        void sendCommand(std::string cmd, const Common::PacketId& id,const Tasks::TaskPriority prio) noexcept {
+            sendQ_.push(Tasks::makeCommand(std::move(cmd), id,prio));
+        }
     protected:
         Queue::SendQueue<Tasks::Task> sendQ_;
 

@@ -61,8 +61,8 @@ namespace Raptor::Core::Session {
         }
 
         // Protocol handlers (called by parser)
-        void onCommand(const Common::Header&, std::string_view command) noexcept override {
-            std::println("{}", command);
+        void onCommand(const Common::Header&h, std::string_view command) noexcept override {
+            Api::WebSocket::dispatchCommandOutput(h,command);
         }
 
         void onUpload(const Common::Header&, std::string_view) noexcept override {}
@@ -97,19 +97,17 @@ namespace Raptor::Core::Session {
             );
         }
 
-        /// Queue a command for sending to the client. Thread-safe.
-        void sendCommand(std::string cmd, const Common::PacketId& id) {
-            sendQ_.push(Tasks::makeCommand(std::move(cmd), id));
-        }
 
         /// Flush send queue: dispatch tasks to socket. Called on writable event.
         Net::Result<size_t> flushSendQueue() {
             size_t totalSent = 0;
             while (true) {
+
                 // Get front task, exit if empty
                 auto task = sendQ_.tryFront();
-                if (!task)
+                if (!task.has_value())
                     return totalSent;
+
 
                 // Dispatch task (send header + data)
                 auto res = dispatch(*task.value());
@@ -188,7 +186,6 @@ namespace Raptor::Core::Session {
             }, task.payload);
         }
 
-        Queue::SendQueue<Tasks::Task> sendQ_;
         std::unique_ptr<Net::Connection> connection_;
     };
 
