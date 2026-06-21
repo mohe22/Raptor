@@ -116,7 +116,8 @@ void Agent::registerAgent() {
     pkt.reserve(hdrBuf.size() + payload.size());
     pkt.insert(pkt.end(), hdrBuf.begin(), hdrBuf.end());
     pkt.insert(pkt.end(), payload.begin(), payload.end());
-    ::write(clientfd_, pkt.data(), pkt.size());
+
+    const ssize_t bytes = ::write(clientfd_, pkt.data(), pkt.size());
 }
 
 void Agent::flushToClient(Entry& entry) noexcept {

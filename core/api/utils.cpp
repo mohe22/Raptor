@@ -21,7 +21,6 @@ namespace Raptor::Core::Api::Utils {
     }
     Json::Value sessionToJson(const Raptor::Core::Session::Base& s, const std::string& serverName) noexcept {
         Json::Value item;
-        std::println("user id: {}",s.id());
         item["id"] =  std::to_string(s.id());
         item["protocol"] = Raptor::Common::Types::ToString(s.type());
         item["status"]  = Raptor::Core::Session::ToString(s.status());

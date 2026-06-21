@@ -8,40 +8,48 @@
 #include "header.hpp"
 #include "libs/net/include/connection.hpp"
 #include "libs/net/include/epoll.hpp"
-
 #include "core/api/controllers/socket.hpp"
+#include "register.hpp"
+
+#include <memory>
+#include <optional>
 #include <print>
 #include <string>
 
-
 namespace Raptor::Core::Session {
 
-    class TcpSession :
-    public Net::Poll::Descriptor,
-    public Base,
-    public Common::Parsers::TcpParser<uint8_t,Config::RECV_BUFFER_SIZE>
+    class TcpSession
+    :   public Net::Poll::Descriptor,
+        public Base,
+        public Common::Parsers::TcpParser<uint8_t, Config::RECV_BUFFER_SIZE>
     {
         public:
-        TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id,const std::string&serverId)
-        :
-        Base(id, Common::Types::ServerType::TCP,serverId),
-        connection_(std::move(conn)){
+        TcpSession(std::unique_ptr<Net::Connection> conn, uint64_t id, const std::string& serverId)
+            : Base(id, Common::Types::ServerType::TCP, serverId),
+              connection_(std::move(conn)) {
             fd = connection_->getSocket();
         }
+
         ~TcpSession() noexcept {
-            // in case client disconnected report to ui
-            Api::WebSocket::dispatchSessionDisconnected(std::to_string(id()),connectedTo());
+            Api::WebSocket::dispatchSessionDisconnected(
+                std::to_string(id()),
+                connectedTo()
+            );
         }
 
+        /// Read data from socket. Updates idle timeout on success.
         Net::Result<size_t> read(void* buf, size_t len) noexcept override {
             auto result = connection_->receive(buf, len);
             if (result) touch();
             return result;
         }
-        Net::Result<size_t> write(const void* buf, size_t len) noexcept override{
+
+        /// Write data to socket.
+        Net::Result<size_t> write(const void* buf, size_t len) noexcept override {
             return connection_->send(buf, len);
         }
 
+        /// Get client address as "IP:PORT" string.
         std::string getAddressStr() const noexcept override {
             auto ipRes = connection_->getAddress().getIp();
             if (!ipRes) return "";
@@ -52,12 +60,15 @@ namespace Raptor::Core::Session {
             return std::format("{}:{}", ipRes.value().data(), portRes.value());
         }
 
-        void onCommand(const Common::Header&, std::string_view command) noexcept override{
-            // header.print();
-            std::println("{}",command);
-        };
-        void onUpload(const Common::Header&, std::string_view) noexcept override {};
-        void onDownload(const Common::Header&, std::string_view) noexcept override {};
+        // Protocol handlers (called by parser)
+        void onCommand(const Common::Header&, std::string_view command) noexcept override {
+            std::println("{}", command);
+        }
+
+        void onUpload(const Common::Header&, std::string_view) noexcept override {}
+
+        void onDownload(const Common::Header&, std::string_view) noexcept override {}
+
         void onRegister(const Common::Header&, std::string_view body) noexcept override {
             auto result = Common::Register::deserialize(
                 std::span<const uint8_t>(
@@ -71,9 +82,9 @@ namespace Raptor::Core::Session {
                 return;
             }
 
-            setRegistrationInfo(*result);
 
-            // dispatch to UI
+            setRegistrationInfo(std::make_unique<Common::Register>(result.value()));
+
             Api::WebSocket::dispatchSessionConnected(
                 result->username,
                 result->hostname,
@@ -86,59 +97,55 @@ namespace Raptor::Core::Session {
             );
         }
 
-
+        /// Queue a command for sending to the client. Thread-safe.
         void sendCommand(std::string cmd, const Common::PacketId& id) {
             sendQ_.push(Tasks::makeCommand(std::move(cmd), id));
         }
 
+        /// Flush send queue: dispatch tasks to socket. Called on writable event.
         Net::Result<size_t> flushSendQueue() {
             size_t totalSent = 0;
-
             while (true) {
-                // 1. get the front task and exit if queue is empty
-                Tasks::Task* task = sendQ_.tryFront();
+                // Get front task, exit if empty
+                auto task = sendQ_.tryFront();
                 if (!task)
                     return totalSent;
 
-                // 2. try to send as much of the task as the socket will accept
-                Net::Result<size_t> res = dispatch(*task);
+                // Dispatch task (send header + data)
+                auto res = dispatch(*task.value());
                 if (!res) {
-                    // 3. if socket full return what we sent so far, or propagate the error
                     if (res.error() == Net::Error::WouldBlock)
                         return totalSent > 0 ? Net::Result<size_t>{totalSent} : res;
                     return res;
                 }
-                // move the task to unorder_map id: task
 
                 totalSent += res.value();
 
-                // 4. task fully sent remove it and try the next one
-                if (task->state == Tasks::TaskState::Done) {
+                // If fully sent, remove and continue; else wait for next writable
+                if (task.value()->state == Tasks::TaskState::Done) {
                     sendQ_.tryPop();
                     continue;
                 }
-
-                // 5. task partially sent stop and wait for the next writable event
                 return totalSent;
             }
         }
+
+        private:
+        /// Dispatch task.
         Net::Result<size_t> dispatch(Tasks::Task& task) {
             return std::visit(Tasks::Overload {
                 [&](Tasks::Command& cmd) -> Net::Result<size_t> {
                     size_t sentThisCall = 0;
-
                     switch (task.state) {
-
+                        // Send packet header
                         case Tasks::TaskState::SendingHeader: {
                             size_t remaining = task.headerBuffer.size() - task.offset;
-
                             if (remaining > 0) {
                                 auto res = connection_->send(
                                     task.headerBuffer.data() + task.offset,
                                     remaining
                                 );
                                 if (!res) return res;
-
 
                                 sentThisCall += static_cast<size_t>(res.value());
                                 task.offset  += static_cast<size_t>(res.value());
@@ -151,9 +158,10 @@ namespace Raptor::Core::Session {
                             task.offset = 0;
                             [[fallthrough]];
                         }
+
+                        // Send command data
                         case Tasks::TaskState::SendingData: {
                             size_t remaining = cmd.cmd.size() - task.offset;
-
                             if (remaining > 0) {
                                 auto res = connection_->send(
                                     cmd.cmd.data() + task.offset,
@@ -170,6 +178,7 @@ namespace Raptor::Core::Session {
 
                             return sentThisCall;
                         }
+
                         case Tasks::TaskState::Done:
                             return sentThisCall;
                     }
@@ -178,8 +187,9 @@ namespace Raptor::Core::Session {
                 }
             }, task.payload);
         }
-        private:
+
+        Queue::SendQueue<Tasks::Task> sendQ_;
         std::unique_ptr<Net::Connection> connection_;
     };
 
-} // namespace Raptor::Core::Peer
+} // namespace Raptor::Core::Session

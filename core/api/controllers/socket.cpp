@@ -16,8 +16,9 @@ void WebSocket::sendJsonOk(
     response["command"] = static_cast<int>(cmd);
     response["status"]  = static_cast<int>(WsStatus::Ok);
     response["data"]    = data;
-
-    conn->send(response.toStyledString(), drogon::WebSocketMessageType::Text);
+    Json::FastWriter writer;
+    const std::string& json = writer.write(response);
+    conn->send(json, drogon::WebSocketMessageType::Text);
 }
 
 void WebSocket::sendErrorJson(
@@ -31,8 +32,9 @@ void WebSocket::sendErrorJson(
     response["command"] = static_cast<int>(cmd);
     response["status"]  = static_cast<int>(WsStatus::Error);
     response["error"]   = reason;
-
-    conn->send(response.toStyledString(), drogon::WebSocketMessageType::Text);
+    Json::FastWriter writer;
+    const std::string& json = writer.write(response);
+    conn->send(json, drogon::WebSocketMessageType::Text);
 }
 
 

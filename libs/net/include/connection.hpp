@@ -23,7 +23,6 @@ namespace Net {
  *       until data is written/read or an error occurs.
  */
 class Connection: public SocketOptions , public Net::Poll::Descriptor {
-
     public:
         /**
          * @brief Creates an outbound TCP connection to the specified remote endpoint.

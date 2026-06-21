@@ -118,6 +118,7 @@ namespace Raptor::Common {
 
         size_t getReadOffset() const noexcept { return rOff_; }
         size_t getWriteOffset() const noexcept { return wOff_; }
+
     private:
         std::array<T, N> buff_;
         std::size_t      rOff_{0}; // read cursor   next byte to consume

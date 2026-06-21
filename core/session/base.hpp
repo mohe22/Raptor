@@ -7,6 +7,7 @@
 #include "type.hpp"
 #include <chrono>
 #include <ctime>
+#include <memory>
 #include <string>
 
 namespace Raptor::Core::Session {
@@ -61,8 +62,12 @@ namespace Raptor::Core::Session {
         Status  status() const noexcept { return status_; }
         const std::string& connectedTo() const noexcept {return connectedTo_;};
         void setStatus(Status s) noexcept { status_ = s; }
-        void setRegistrationInfo(const Common::Register& r) noexcept { information = r; }
-        const Common::Register& getRegistrationInfo() const noexcept { return information; }
+        void setRegistrationInfo(std::unique_ptr<Common::Register>&& r) noexcept {
+            information = std::move(r);
+        }
+        const Common::Register& getRegistrationInfo() const noexcept {
+            return *information;
+        }
 
         bool isConnected() const noexcept { return status_ == Status::Connected;}
         bool isIdle() const noexcept { return status_ == Status::Idle;}
@@ -120,12 +125,12 @@ namespace Raptor::Core::Session {
 
     private:
         uint64_t   id_;
-        Common::Types::ServerType    type_;
+        Common::Types::ServerType type_;
         Status status_;
         Common::Types::TimePoint connectedAt_;     ///< Monotonic  duration math only.
         std::chrono::system_clock::time_point connectedAtWall_; ///< Wall clock  serialization / UI.
         Common::Types::TimePoint lastActive_;      ///< Reset on every touch().
-        Common::Register information;
+        std::unique_ptr<Common::Register> information;
         std::string connectedTo_;
     };
 

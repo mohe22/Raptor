@@ -1,7 +1,6 @@
 #include "base.hpp"
 #include "common/header.hpp"
 #include <cstddef>
-#include <cstdint>
 #include <cstdio>
 
 
@@ -19,62 +18,67 @@ namespace Raptor::Common::Parsers{
             if (!this->buffer.canWrite(len)) {
                  this->buffer.compact();
              };
-            this->buffer.write(data, len);
+
+
+            std::size_t written = this->buffer.write(data, len);
+            if(written<len){
+                // TODO: handle partial write
+            }
 
             while (true) {
                 if (this->getState() == State::ReadingHeader) {
-                    if (this->buffer.size() < Header::SIZE) {
+                    if (this->buffer.size() < Header::SIZE)
                         return;
-                    }
-                    header_ = Header::deserialize(
-                        this->buffer.data(),
-                        Header::SIZE
-                    );
+
+                    header_ = Header::deserialize(this->buffer.data(), Header::SIZE);
                     this->buffer.consume(Header::SIZE);
-
-
-                    // header_.print();
-
                     bodyReceived = 0; // reset body counter
 
-
                     this->setState(State::ReadingBody);
+                    continue;
                 }
                 if (this->getState() == State::ReadingBody) {
                     size_t available = this->buffer.size();
+                    if (available == 0) return; // nothing to read
+
                     size_t remaining = header_.payloadSize - bodyReceived;
-
-                    if (available == 0)
-                        return; // need more
-
                     size_t toConsume = std::min(available, remaining);
-
-
-                    uint8_t* ptr= this->buffer.data();
+                    const char* ptr = reinterpret_cast<const char*>(this->buffer.data());
 
                     switch (header_.type) {
                         case PacketType::Command: {
-                            this->onCommand(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
+                            this->onCommand(header_, {ptr, toConsume});
                             break;
                         }
                         case PacketType::FileUpload:{
-                            this->onUpload(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
+                            this->onUpload(header_, {ptr, toConsume});
                             break;
                         }
                         case PacketType::FileDownload: {
-                            this->onDownload(header_, std::string_view(reinterpret_cast<char*>(ptr), toConsume));
+                            this->onDownload(header_, {ptr, toConsume});
                             break;
                         }
                         case PacketType::Register: {
-                            if (bodyReceived + toConsume < header_.payloadSize) break;
-                            this->onRegister(header_, std::string_view(reinterpret_cast<char*>(ptr), header_.payloadSize));
+                            // Only call onRegister when we have the FULL body
+                            if (bodyReceived + toConsume >= header_.payloadSize) {
+                                this->onRegister(header_, {ptr, header_.payloadSize});
+                            }
                             break;
                         }
                     }
 
+                    // if the type was register do not consume because
+                    // we want to accumulate.
+                    if (header_.type != PacketType::Register) {
+                        size_t consumed = this->buffer.consume(toConsume);
+                        bodyReceived += consumed;
+                    } else {
+                        // For partial Register: Do not consume, just accumulate in buffer
+                        bodyReceived += toConsume;
+                        return;
+                    }
 
-                    size_t consumed = this->buffer.consume(toConsume);
-                    bodyReceived += consumed;
+
                     if (bodyReceived >= header_.payloadSize) {
                         reset();
                         continue;

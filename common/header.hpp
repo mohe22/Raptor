@@ -4,16 +4,18 @@
 #include <cstring>
 #include <print>
 #include <stdexcept>
+#include <array>
+#include <netinet/in.h>
 
 namespace Raptor::Common {
 
     /**
-     * @brief Bitmask flags carried in every packet header.
-     *
-     * Multiple flags can be combined with operator|.
-     * uint8_t gives 8 bits — all currently used, add fields to Header
-     * before adding more flags here.
-     */
+        * @brief Bitmask flags carried in every packet header.
+        *
+        * Multiple flags can be combined with operator|.
+        * uint8_t gives 8 bits — all currently used, add fields to Header
+        * before adding more flags here.
+        */
     enum class Flags : uint8_t {
         Ack       = 1 << 0,  ///< Receiver acknowledges the packet
         Error     = 1 << 1,  ///< Payload contains an error description
@@ -38,16 +40,16 @@ namespace Raptor::Common {
     }
 
     /**
-     * @brief Direction of the packet relative to the initiating side.
-     */
+        * @brief Direction of the packet relative to the initiating side.
+        */
     enum class PacketDirection : uint8_t {
         Req,   ///< Client → Server request
         Resp,  ///< Server → Client response
     };
 
     /**
-     * @brief Logical purpose of the packet's payload.
-     */
+        * @brief Logical purpose of the packet's payload.
+        */
     enum class PacketType : uint8_t {
         FileUpload,    ///< Client is sending a file to the server
         FileDownload,  ///< Server is sending a file to the client
@@ -93,23 +95,20 @@ namespace Raptor::Common {
 
 
     /**
-     * @brief Fixed-size packet header prepended to every payload.
-     *
-     * Wire layout (22 bytes, little-endian):
-     *
-     *   Offset  Size  Field
-     *   ------  ----  -----
-     *        0     4  packetId
-     *        4     1  type
-     *        5     1  direction
-     *        6     1  flags
-     *        7     4  payloadSize
-     *       11     8  totalSize
-     *       19     4  checksum (CRC32 of this chunk's payload)
-     *
-     * NOTE: all multi-byte fields are written in host byte order.
-     * Both ends must be the same endianness (little-endian assumed).
-     */
+        * @brief Fixed-size packet header prepended to every payload.
+        *
+        * Wire layout (22 bytes, network byte order):
+        *
+        *   Offset  Size  Field
+        *   ------  ----  -----
+        *        0     4  packetId
+        *        4     1  type
+        *        5     1  direction
+        *        6     1  flags
+        *        7     8  payloadSize
+        *
+        * NOTE: all multi-byte fields are written in network byte order (big-endian).
+        */
     struct Header {
         PacketId        packetId    = 0;                    ///< Identifies the logical transfer/command
         PacketType      type        = PacketType::Command;  ///< What the payload represents
@@ -118,11 +117,11 @@ namespace Raptor::Common {
         uint64_t        payloadSize = 0;                    ///< Byte count of THIS chunk's body
 
         static constexpr size_t SIZE =
-            sizeof(PacketId)  +   // 4  — packetId
-            sizeof(uint8_t)   +   // 1  — type
-            sizeof(uint8_t)   +   // 1  — direction
-            sizeof(uint8_t)   +   // 1  — flags
-            sizeof(uint64_t);   // 4  — payloadSize
+        sizeof(PacketId)  +   // 4  — packetId
+        sizeof(uint8_t)   +   // 1  — type
+        sizeof(uint8_t)   +   // 1  — direction
+        sizeof(uint8_t)   +   // 1  — flags
+        sizeof(uint64_t);     // 8  — payloadSize
 
 
 
@@ -146,68 +145,86 @@ namespace Raptor::Common {
             if (len < SIZE || buffer == nullptr)
                 return;
 
-            size_t o = 0;
+            size_t offset = 0;
 
-            auto write = [&]<typename V>(V v) {
-                std::memcpy(buffer + o, &v, sizeof(V));
-                o += sizeof(V);
-            };
+            uint32_t packetIdNet = htonl(packetId);
+            std::memcpy(buffer + offset, &packetIdNet, sizeof(uint32_t));
+            offset += sizeof(uint32_t);
 
-            write(packetId);
-            write(static_cast<uint8_t>(type));
-            write(static_cast<uint8_t>(direction));
-            write(static_cast<uint8_t>(flags));
-            write(payloadSize);
+            uint8_t typeByte = static_cast<uint8_t>(type);
+            std::memcpy(buffer + offset, &typeByte, sizeof(uint8_t));
+            offset += sizeof(uint8_t);
+
+            uint8_t directionByte = static_cast<uint8_t>(direction);
+            std::memcpy(buffer + offset, &directionByte, sizeof(uint8_t));
+            offset += sizeof(uint8_t);
+
+            uint8_t flagsByte = static_cast<uint8_t>(flags);
+            std::memcpy(buffer + offset, &flagsByte, sizeof(uint8_t));
+            offset += sizeof(uint8_t);
+
+            uint64_t payloadSizeNet = htobe64(payloadSize);
+            std::memcpy(buffer + offset, &payloadSizeNet, sizeof(uint64_t));
         }
-        /**
-         * @brief Serializes the header into a fixed-size byte array.
-         * Fields are written in the wire layout order shown above.
-         */
+
         std::array<uint8_t, SIZE> serialize() const noexcept {
-            std::array<uint8_t, SIZE> buf{};
-            size_t o = 0;
+            std::array<uint8_t, SIZE> buffer{};
+            size_t offset = 0;
 
-            auto write = [&]<typename V>(V v) {
-                std::memcpy(buf.data() + o, &v, sizeof(V));
-                o += sizeof(V);
-            };
+            uint32_t packetIdNet = htonl(packetId);
+            std::memcpy(buffer.data() + offset, &packetIdNet, sizeof(uint32_t));
+            offset += sizeof(uint32_t);
 
-            write(packetId);
-            write(static_cast<uint8_t>(type));
-            write(static_cast<uint8_t>(direction));
-            write(static_cast<uint8_t>(flags));
-            write(payloadSize);
+            uint8_t typeByte = static_cast<uint8_t>(type);
+            std::memcpy(buffer.data() + offset, &typeByte, sizeof(uint8_t));
+            offset += sizeof(uint8_t);
 
-            return buf;
+            uint8_t directionByte = static_cast<uint8_t>(direction);
+            std::memcpy(buffer.data() + offset, &directionByte, sizeof(uint8_t));
+            offset += sizeof(uint8_t);
+
+            uint8_t flagsByte = static_cast<uint8_t>(flags);
+            std::memcpy(buffer.data() + offset, &flagsByte, sizeof(uint8_t));
+            offset += sizeof(uint8_t);
+
+            uint64_t payloadSizeNet = htobe64(payloadSize);
+            std::memcpy(buffer.data() + offset, &payloadSizeNet, sizeof(uint64_t));
+
+            return buffer;
         }
 
-        /**
-         * @brief Reconstructs a Header from raw bytes.
-         * @throws std::runtime_error if size < SerializedSize.
-         */
         static Header deserialize(const uint8_t* data, size_t size) {
             if (size < SIZE)
                 throw std::runtime_error("Header too small");
 
-            Header h{};
-            size_t o = 0;
+            Header header{};
+            size_t offset = 0;
 
-            auto read = [&]<typename V>(V& v) {
-                std::memcpy(&v, data + o, sizeof(V));
-                o += sizeof(V);
-            };
+            uint32_t packetIdNet;
+            std::memcpy(&packetIdNet, data + offset, sizeof(uint32_t));
+            header.packetId = ntohl(packetIdNet);
+            offset += sizeof(uint32_t);
 
-            read(h.packetId);
+            uint8_t typeByte;
+            std::memcpy(&typeByte, data + offset, sizeof(uint8_t));
+            header.type = static_cast<PacketType>(typeByte);
+            offset += sizeof(uint8_t);
 
-            uint8_t type, dir, flags;
-            read(type);  h.type      = static_cast<PacketType>(type);
-            read(dir);   h.direction = static_cast<PacketDirection>(dir);
-            read(flags); h.flags     = static_cast<Flags>(flags);
+            uint8_t directionByte;
+            std::memcpy(&directionByte, data + offset, sizeof(uint8_t));
+            header.direction = static_cast<PacketDirection>(directionByte);
+            offset += sizeof(uint8_t);
 
-            read(h.payloadSize);
+            uint8_t flagsByte;
+            std::memcpy(&flagsByte, data + offset, sizeof(uint8_t));
+            header.flags = static_cast<Flags>(flagsByte);
+            offset += sizeof(uint8_t);
 
+            uint64_t payloadSizeNet;
+            std::memcpy(&payloadSizeNet, data + offset, sizeof(uint64_t));
+            header.payloadSize = be64toh(payloadSizeNet);
 
-            return h;
+            return header;
         }
 
 

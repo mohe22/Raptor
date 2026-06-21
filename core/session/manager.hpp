@@ -149,16 +149,8 @@ namespace Raptor::Core::Server {
 
         SessionManager(const SessionManager&)  = delete;
         SessionManager& operator=(const SessionManager&) = delete;
-        SessionManager(SessionManager&& other) noexcept {
-            std::unique_lock lock(other.mutex_);
-            sessions_ = std::move(other.sessions_);
-        }
-
-        SessionManager& operator=(SessionManager&& other) noexcept {
-            if (this == &other) return *this;
-
-            return *this;
-        };
+        SessionManager(SessionManager&& other) = delete;
+        SessionManager& operator=(SessionManager&& other) = delete;
 
         /**
          * @brief Takes ownership of a session and registers it.

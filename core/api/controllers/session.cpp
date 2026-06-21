@@ -22,7 +22,6 @@ void Sessions::getSessionForServer(const HttpRequestPtr& , std::function<void(co
         }
 
         const auto& sessionsInfo = sessionManager->getSessionsInfo();
-        std::println("size: {}",sessionsInfo.size());
 
         Json::Value json(Json::arrayValue);
         for (const auto& s : sessionsInfo) {
