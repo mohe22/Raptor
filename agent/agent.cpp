@@ -195,7 +195,6 @@ void Agent::readShell(int fd) noexcept {
             const bool   hasMarker = nul
                 && (size_t)(nul - (char*)newData) + 5 < newBytes
                 && memcmp(nul + 1, "END:", 4) == 0;
-
             entry.outLen += newBytes;
 
 
@@ -250,7 +249,6 @@ void Agent::writeClient() noexcept {
             entry.outBuf + entry.outOffset,
             totalLen - entry.outOffset
         );
-
         if (n > 0) {
             entry.outOffset += static_cast<size_t>(n);
             continue;
