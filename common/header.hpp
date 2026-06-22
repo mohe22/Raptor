@@ -52,6 +52,7 @@ namespace Raptor::Common {
         FileUpload,    ///< Client is sending a file to the server
         FileDownload,  ///< Server is sending a file to the client
         Command,       ///< Payload is a command string / response
+        PtyCommand,    /// < payload is a command will execute using Pty shell.
         Register,      ///< Payload is a registration request / response
     };
 

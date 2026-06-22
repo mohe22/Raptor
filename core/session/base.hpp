@@ -9,6 +9,7 @@
 #include <ctime>
 #include <memory>
 #include <string>
+#include "common/header.hpp"
 
 namespace Raptor::Core::Session {
 
@@ -123,8 +124,8 @@ namespace Raptor::Core::Session {
         }
 
         /// Queue a command for sending to the client.
-        void sendCommand(std::string cmd, const Common::PacketId& id,const Tasks::TaskPriority prio) noexcept {
-            sendQ_.push(Tasks::makeCommand(std::move(cmd), id,prio));
+        void sendCommand(std::string cmd, const Common::PacketId& id,const Common::PacketType type,const Tasks::TaskPriority prio) noexcept {
+            sendQ_.push(Tasks::makeTask(std::move(cmd), id,type,prio));
         }
     protected:
         Queue::SendQueue<Tasks::Task> sendQ_;

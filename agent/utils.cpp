@@ -17,7 +17,6 @@
 #include <cstring>
 #include <format>
 #include <fstream>
-#include <print>
 #include <string>
 
 namespace {
@@ -71,49 +70,21 @@ namespace {
 
 namespace Raptor::Utils {
 
-
-void setNonBlocking(int fd) {
-    int flags = ::fcntl(fd, F_GETFL, 0);
-    if (flags == -1)
-        throw std::runtime_error(
-            std::format("fcntl(F_GETFL) fd={}: {}", fd, strerror(errno)));
-    if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-        throw std::runtime_error(
-            std::format("fcntl(F_SETFL) fd={}: {}", fd, strerror(errno)));
-}
-
-
-bool addEpoll(int epollfd, int fd, uint32_t events) noexcept {
-    epoll_event ev{};
-    ev.data.fd = fd;
-    ev.events  = events;
-    if (::epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
-        std::println(stderr, "[epoll] ADD fd={} events={:#x} failed: {}",
-                     fd, events, strerror(errno));
-        return false;
+    void setNonBlocking(int fd) {
+        int flags = ::fcntl(fd, F_GETFL, 0);
+        if (flags == -1)
+            throw std::runtime_error(
+                std::format("fcntl(F_GETFL) fd={}: {}", fd, strerror(errno)));
+        if (::fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+            throw std::runtime_error(
+                std::format("fcntl(F_SETFL) fd={}: {}", fd, strerror(errno)));
     }
-    return true;
-}
 
-bool rearm(int epollfd, int fd, uint32_t events) noexcept {
-    epoll_event ev{};
-    ev.data.fd = fd;
-    ev.events  = events;
-    if (::epoll_ctl(epollfd, EPOLL_CTL_MOD, fd, &ev) == -1) {
-        std::println(stderr, "[epoll] MOD fd={} events={:#x} failed: {}",
-                     fd, events, strerror(errno));
-        return false;
-    }
-    return true;
-}
 
-bool delEpoll(int epollfd, int fd) noexcept {
-    if (::epoll_ctl(epollfd, EPOLL_CTL_DEL, fd, nullptr) == -1) {
-        std::println(stderr, "[epoll] DEL fd={} failed: {}", fd, strerror(errno));
-        return false;
-    }
-    return true;
-}
+
+
+
+
 
 [[nodiscard]] Raptor::Common::Register collect() noexcept {
     Raptor::Common::Register reg{};

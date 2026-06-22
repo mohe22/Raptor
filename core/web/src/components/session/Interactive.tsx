@@ -31,31 +31,11 @@ interface HistoryItem {
   exitCode?: number;
   cwd?: string;
   header?: {
-    packetId: number;
+    taskId: number;
     type: string;
     flags: string;
   };
 }
-
-const getPacketType = (type: number): string => {
-  const types = ["FileUpload", "FileDownload", "Command", "Register"];
-  return types[type] ?? "Unknown";
-};
-
-const getFlagsString = (flags: number): string => {
-  const flagNames = [
-    "Ack",
-    "Error",
-    "Binary",
-    "Text",
-    "KeepAlive",
-    "Success",
-    "LastChunk",
-    "Metadata",
-  ];
-  const active = flagNames.filter((_, i) => flags & (1 << i));
-  return active.length ? active.join(", ") : "None";
-};
 
 const parseEndMarker = (
   output: string,
@@ -208,46 +188,42 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
 
   useEffect(() => {
     const handleCommandOutput = (res) => {
-      console.log(res);
-      const packetId = res.data.header.packetId;
-      const flags = res.data.header.flags;
+      const header = res.data?.header || {};
+      const taskId = header.taskId;
+      const flagsStr = header.flags || "";
+      const outputText = res.error || res.data?.output || "";
 
-      const hasServerError = !!res.error;
-      const hasAgentError = !!(flags & (1 << 1));
-      const isError = hasServerError || hasAgentError;
-
-      const outputText = res.error || res.data.output || "";
       const { clean, exitCode, cwd } = parseEndMarker(outputText);
 
       if (cwd) {
         setCwdLabel(abbreviatePath(cwd));
       }
 
+      // Check for error using string
+      const isError = !!res.error || flagsStr.includes("Error");
+
       setHistory((prev) => {
         const idx = prev.findIndex(
-          (x) => x.id === packetId || x.header?.packetId === packetId,
+          (x) => x.id === taskId || x.header?.taskId === taskId,
         );
 
-        if (idx === -1) {
-          return prev;
-        }
+        if (idx === -1) return prev;
 
         const updated = [...prev];
         const current = updated[idx];
 
-        const chunk = clean.trim();
         updated[idx] = {
           ...current,
-          output: [current.output, chunk].filter(Boolean).join("\n"),
+          output: [current.output, clean.trim()].filter(Boolean).join("\n"),
           ok: current.ok && !isError,
           isLoading: false,
-          timestamp: res.data.header.timestamp,
+          timestamp: header.formattedTime,
           exitCode: exitCode ?? current.exitCode,
           cwd: cwd ?? current.cwd,
           header: {
-            packetId,
-            type: getPacketType(res.data.header.type),
-            flags: getFlagsString(flags),
+            taskId,
+            type: header.type || "Command",
+            flags: flagsStr,
           },
         };
 

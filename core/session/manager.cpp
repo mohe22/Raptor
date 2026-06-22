@@ -18,6 +18,7 @@ bool SessionManager::remove(const uint64_t id) {
         std::unique_lock lock(mutex_);
         auto it = sessions_.find(id);
         if (it != sessions_.end()) {
+            serverId = it->second->connectedTo();
             sessions_.erase(it);
             removed = true;
         }

@@ -47,14 +47,14 @@ namespace Raptor::Core::Tasks {
         }
     };
 
-    inline Task makeCommand(std::string cmd,const Common::PacketId& id,TaskPriority prio = TaskPriority::Normal) noexcept
+    inline Task makeTask(std::string cmd,const Common::PacketId& id,const Common::PacketType type,TaskPriority prio = TaskPriority::Normal) noexcept
     {
         Task t;
         t.packetId = id;
         t.priority = prio;
 
         Common::Header header;
-        header.type = Common::PacketType::Command;
+        header.type =type;
         header.packetId = id;
         header.payloadSize = cmd.size();
         header.setFlag(Common::Flags::Text);

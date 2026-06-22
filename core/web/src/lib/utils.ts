@@ -36,3 +36,13 @@ export const formatConnectionTime = (nanoseconds: number): string => {
   const date = new Date(nanoseconds / 1_000_000);
   return date.toLocaleString();
 };
+
+export const formatTimestamp = (isoString: string): string => {
+  const date = new Date(isoString);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false, // 24-hour format
+  });
+};
