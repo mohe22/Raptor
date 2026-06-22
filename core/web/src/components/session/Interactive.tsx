@@ -6,7 +6,7 @@ import {
   Trash2,
   Upload,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { Terminal as XTerm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -20,10 +20,12 @@ import {
 } from "../../types/session";
 import { WsCmd } from "../../lib/socket";
 
+const MAX_HISTORY_ITEMS = 100;
+const MAX_RENDER_CHARS = 200000;
+
 interface HistoryItem {
-  id: number;
   command: string;
-  output: string | null;
+  output: string;
   ok: boolean;
   isLoading: boolean;
   timestamp: string;
@@ -66,6 +68,92 @@ const abbreviatePath = (path: string): string => {
   return path.replace(/\/home\/([^/]+)/, "~");
 };
 
+interface HistoryRowProps {
+  item: HistoryItem;
+  copiedId: number | null;
+  onCopyOutput: (item: HistoryItem) => void;
+  onCopyPath: (path: string) => void;
+}
+
+const HistoryRow = memo(function HistoryRow({
+  item,
+  copiedId,
+  onCopyOutput,
+  onCopyPath,
+}: HistoryRowProps) {
+  const displayOutput =
+    item.output.length > MAX_RENDER_CHARS
+      ? item.output.slice(item.output.length - MAX_RENDER_CHARS)
+      : item.output;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-start gap-3">
+        <span className="shrink-0 text-emerald-500 select-none mt-0.5">❯</span>
+        <span className="text-zinc-200 break-all">{item.command}</span>
+        {item.isLoading && (
+          <span className="shrink-0 animate-pulse text-emerald-500/70 text-xs mt-0.5">
+            ...
+          </span>
+        )}
+        <span className="ml-auto shrink-0 text-[10px] text-zinc-700 tabular-nums">
+          {item.timestamp}
+        </span>
+      </div>
+
+      {item.output && (
+        <div className="pl-6 border-l border-zinc-800/70">
+          {displayOutput.length < item.output.length && (
+            <div className="text-[10px] text-amber-500/80 mb-1">
+              truncated, showing last {MAX_RENDER_CHARS.toLocaleString()} chars
+            </div>
+          )}
+          <pre
+            className={`whitespace-pre-wrap break-words text-xs leading-relaxed ${
+              item.ok ? "text-zinc-400" : "text-red-400"
+            }`}
+          >
+            {displayOutput}
+          </pre>
+
+          {!item.isLoading && (
+            <button
+              type="button"
+              onClick={() => onCopyOutput(item)}
+              className="mt-2 opacity-40 hover:opacity-100 transition-opacity flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-zinc-400"
+            >
+              <Copy className="h-3 w-3" />
+              {copiedId === item.id ? "copied" : "copy"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {!item.isLoading && (
+        <div className="pl-6 space-y-1">
+          {item.exitCode !== undefined && (
+            <div
+              className={`text-[10px] font-semibold ${
+                item.exitCode === 0 ? "text-emerald-600" : "text-red-400"
+              }`}
+            >
+              exit {item.exitCode}
+            </div>
+          )}
+          {item.cwd && (
+            <div
+              className="text-[10px] text-zinc-600 cursor-pointer hover:text-zinc-400 transition-colors"
+              onClick={() => onCopyPath(item.cwd!)}
+            >
+              {abbreviatePath(item.cwd)}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+});
+
 interface InteractiveProps {
   sessionId: string;
   serverId: string;
@@ -81,11 +169,12 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
   const historyIndexRef = useRef(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const outputRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
   const termRef = useRef<HTMLDivElement>(null);
   const xtermRef = useRef<XTerm | null>(null);
-  const fitAddonRef = useRef<FitAddon | null>(null);
-
-  const NextId = useRef<number>(2);
+  const pendingOutputRef = useRef<Map<number, string>>(new Map());
+  const flushHandleRef = useRef<number | null>(null);
+  const nextIdRef = useRef<number>(2);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const rawMode = searchParams.get("mode") ?? "pip";
@@ -103,10 +192,20 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
     [setSearchParams],
   );
 
+  const handleScroll = useCallback(() => {
+    const el = outputRef.current;
+    if (!el) return;
+    isAtBottomRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+  }, []);
+
   useEffect(() => {
-    if (outputRef.current) {
-      outputRef.current.scrollTop = outputRef.current.scrollHeight;
-    }
+    if (!isAtBottomRef.current || !outputRef.current) return;
+    const el = outputRef.current;
+    const id = requestAnimationFrame(() => {
+      el.scrollTop = el.scrollHeight;
+    });
+    return () => cancelAnimationFrame(id);
   }, [history]);
 
   useEffect(() => {
@@ -139,7 +238,6 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
     fitAddon.fit();
 
     xtermRef.current = term;
-    fitAddonRef.current = fitAddon;
 
     const observer = new ResizeObserver(() => fitAddon.fit());
     observer.observe(termRef.current);
@@ -148,7 +246,6 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
       observer.disconnect();
       term.dispose();
       xtermRef.current = null;
-      fitAddonRef.current = null;
     };
   }, [mode]);
 
@@ -156,19 +253,25 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
     (cmd: string) => {
       if (!cmd.trim()) return;
 
-      historyRef.current.unshift(cmd);
+      if (historyRef.current[0] !== cmd) {
+        historyRef.current.unshift(cmd);
+      }
       historyIndexRef.current = -1;
 
-      const commandId = NextId.current++;
+      const commandId = nextIdRef.current++;
 
       const item: HistoryItem = {
-        id: commandId,
         command: cmd,
         output: "",
         ok: true,
         isLoading: true,
         timestamp: new Date().toLocaleTimeString(),
         mode,
+        header: {
+          taskId: commandId,
+          type: "",
+          flags: "",
+        },
       };
 
       const executeCmd: ExecuteCommand = {
@@ -180,11 +283,44 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
         shellType: mode,
       };
       client.sendExecuteCommandEvent(executeCmd);
-      setHistory((h) => [...h, item]);
+      setHistory((h) => {
+        const next = [...h, item];
+        return next.length > MAX_HISTORY_ITEMS
+          ? next.slice(next.length - MAX_HISTORY_ITEMS)
+          : next;
+      });
       setPipInput("");
     },
     [client, mode, sessionId, serverId],
   );
+
+  const flushPendingOutput = useCallback(() => {
+    flushHandleRef.current = null;
+    if (pendingOutputRef.current.size === 0) return;
+
+    const pending = pendingOutputRef.current;
+    pendingOutputRef.current = new Map();
+
+    setHistory((prev) => {
+      let changed = false;
+      const updated = prev.map((item) => {
+        const taskId = item.header?.taskId ?? item.header.taskId;
+        const appended = pending.get(taskId);
+        if (appended === undefined) return item;
+        changed = true;
+        return {
+          ...item,
+          output: item.output ? `${item.output}\n${appended}` : appended,
+        };
+      });
+      return changed ? updated : prev;
+    });
+  }, []);
+
+  const scheduleFlush = useCallback(() => {
+    if (flushHandleRef.current != null) return;
+    flushHandleRef.current = requestAnimationFrame(flushPendingOutput);
+  }, [flushPendingOutput]);
 
   useEffect(() => {
     const handleCommandOutput = (res) => {
@@ -193,30 +329,42 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
       const flagsStr = header.flags || "";
       const outputText = res.error || res.data?.output || "";
 
-      const { clean, exitCode, cwd } = parseEndMarker(outputText);
-
-      if (cwd) {
-        setCwdLabel(abbreviatePath(cwd));
-      }
-
-      // Check for error using string
+      const isLastChunk = flagsStr.includes("LastChunk");
       const isError = !!res.error || flagsStr.includes("Error");
 
-      setHistory((prev) => {
-        const idx = prev.findIndex(
-          (x) => x.id === taskId || x.header?.taskId === taskId,
-        );
+      let clean = outputText;
+      let exitCode: number | undefined;
+      let cwd: string | undefined;
 
+      if (isLastChunk) {
+        const parsed = parseEndMarker(outputText);
+        clean = parsed.clean;
+        exitCode = parsed.exitCode;
+        cwd = parsed.cwd;
+        if (cwd) {
+          setCwdLabel(abbreviatePath(cwd));
+        }
+      }
+
+      if (clean) {
+        const existing = pendingOutputRef.current.get(taskId) ?? "";
+        pendingOutputRef.current.set(
+          taskId,
+          existing ? `${existing}\n${clean}` : clean,
+        );
+        scheduleFlush();
+      }
+
+      setHistory((prev) => {
+        const idx = prev.findIndex((x) => x.header?.taskId === taskId);
         if (idx === -1) return prev;
 
+        const current = prev[idx];
         const updated = [...prev];
-        const current = updated[idx];
-
         updated[idx] = {
           ...current,
-          output: [current.output, clean.trim()].filter(Boolean).join("\n"),
           ok: current.ok && !isError,
-          isLoading: false,
+          isLoading: !isLastChunk,
           timestamp: header.formattedTime,
           exitCode: exitCode ?? current.exitCode,
           cwd: cwd ?? current.cwd,
@@ -226,7 +374,6 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
             flags: flagsStr,
           },
         };
-
         return updated;
       });
     };
@@ -236,7 +383,15 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
     return () => {
       client.off(WsCmd.CommandOutput);
     };
-  }, [client]);
+  }, [client, scheduleFlush]);
+
+  useEffect(() => {
+    return () => {
+      if (flushHandleRef.current != null) {
+        cancelAnimationFrame(flushHandleRef.current);
+      }
+    };
+  }, []);
 
   const navigateHistory = useCallback((dir: "up" | "down") => {
     const h = historyRef.current;
@@ -263,7 +418,7 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
   const copyOutput = useCallback((item: HistoryItem) => {
     if (!item.output) return;
     navigator.clipboard.writeText(item.output);
-    setCopiedId(item.id);
+    setCopiedId(item.header.taskId);
     setTimeout(() => setCopiedId(null), 1200);
   }, []);
 
@@ -272,6 +427,11 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
   }, []);
 
   const clearAll = useCallback(() => {
+    if (flushHandleRef.current != null) {
+      cancelAnimationFrame(flushHandleRef.current);
+      flushHandleRef.current = null;
+    }
+    pendingOutputRef.current = new Map();
     setHistory([]);
     historyRef.current = [];
     historyIndexRef.current = -1;
@@ -374,6 +534,7 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
         <div className="flex flex-1 flex-col overflow-hidden">
           <div
             ref={outputRef}
+            onScroll={handleScroll}
             className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
             style={{
               scrollbarWidth: "thin",
@@ -387,71 +548,13 @@ export function Interactive({ sessionId, serverId }: InteractiveProps) {
             )}
 
             {history.map((item) => (
-              <div key={item.id} className="space-y-1">
-                <div className="flex items-start gap-3">
-                  <span className="shrink-0 text-emerald-500 select-none mt-0.5">
-                    ❯
-                  </span>
-                  <span className="text-zinc-200 break-all">
-                    {item.command}
-                  </span>
-                  {item.isLoading && (
-                    <span className="shrink-0 animate-pulse text-emerald-500/70 text-xs mt-0.5">
-                      ...
-                    </span>
-                  )}
-                  <span className="ml-auto shrink-0 text-[10px] text-zinc-700 tabular-nums">
-                    {item.timestamp}
-                  </span>
-                </div>
-
-                {item.output && (
-                  <div className="pl-6 border-l border-zinc-800/70">
-                    <pre
-                      className={`whitespace-pre-wrap break-words text-xs leading-relaxed ${
-                        item.ok ? "text-zinc-400" : "text-red-400"
-                      }`}
-                    >
-                      {item.output}
-                    </pre>
-
-                    {!item.isLoading && (
-                      <button
-                        type="button"
-                        onClick={() => copyOutput(item)}
-                        className="mt-2 opacity-40 hover:opacity-100 transition-opacity flex items-center gap-1.5 text-[10px] text-zinc-500 hover:text-zinc-400"
-                      >
-                        <Copy className="h-3 w-3" />
-                        copy
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {!item.isLoading && (
-                  <div className="pl-6 space-y-1">
-                    {item.exitCode !== undefined && (
-                      <div
-                        className={`text-[10px] font-semibold ${
-                          item.exitCode === 0
-                            ? "text-emerald-600"
-                            : "text-red-400"
-                        }`}
-                      >
-                        exit {item.exitCode}
-                      </div>
-                    )}
-                    {item.cwd && (
-                      <div
-                        className="text-[10px] text-zinc-600 cursor-pointer hover:text-zinc-400 transition-colors"
-                        onClick={() => copyPath(item.cwd!)}
-                      >
-                        {abbreviatePath(item.cwd)}
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <HistoryRow
+                key={item.header.taskId}
+                item={item}
+                copiedId={copiedId}
+                onCopyOutput={copyOutput}
+                onCopyPath={copyPath}
+              />
             ))}
           </div>
 

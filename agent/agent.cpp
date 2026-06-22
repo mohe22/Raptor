@@ -227,7 +227,12 @@ void Agent::flushToClient(Entry& entry) noexcept
     hdr.packetId = entry.taskId;
     hdr.type = Raptor::Common::PacketType::Command;
     hdr.direction = Raptor::Common::PacketDirection::Resp;
-    hdr.flags = Raptor::Common::Flags::Success | Raptor::Common::Flags::Text;
+    auto flags = Raptor::Common::Flags::Success | Raptor::Common::Flags::Text;
+    if (entry.done) {
+        flags = flags | Raptor::Common::Flags::LastChunk;
+    }
+    hdr.flags = flags;
+
     hdr.payloadSize = static_cast<uint32_t>(entry.outLen);
     hdr.serialize(entry.outBuf, Raptor::Common::Header::SIZE);
     epollMgr_.rearmWrite(clientfd_);
